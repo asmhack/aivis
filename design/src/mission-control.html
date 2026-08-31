@@ -1,0 +1,147 @@
+<!-- @dsCard group="Fleet" name="Mission control" viewport="1560x1180" -->
+<!-- @styles: Status dots, Working indicator, Vitals bar, Section headings, Attention queue, Running tiles, Running tasks, Rest of the fleet, New-session entry points, Block usage meter -->
+
+<p class="ds-note">Mission control — the index</p>
+<p class="ds-sub">The page is ordered by how much of your attention a thing has earned rather than by recency. A queue of sessions that have stopped and are holding for you comes first, because that is the only part of the fleet that is losing time while you read, and each row carries the action that answers it. The sessions still advancing come next as tiles, with the shape of their last quarter of an hour drawn as a sparkline. Everything else collapses into one list of projects at the bottom, which is where you go looking rather than where you are told. The queue is ordered longest wait first, except that a session asking you a question comes ahead of the rest: it is the only kind here that said what it wants, and it is holding a turn open until it gets it.</p>
+
+<div class="ds-frame">
+  <header class="vitals">
+    <span class="vitals__mark">ai<b>vis</b></span>
+    <span class="conn conn--open">open</span>
+    <span class="vit"><span class="vit__n vit__n--working">2</span><span class="vit__l">working</span></span>
+    <span class="vit"><span class="vit__n vit__n--working">1</span><span class="vit__l">background</span></span>
+    <span class="vit"><span class="vit__n vit__n--asking">1</span><span class="vit__l">asking you</span></span>
+    <span class="vit"><span class="vit__n vit__n--waiting">1</span><span class="vit__l">waiting on you</span></span>
+    <span class="vit"><span class="vit__n vit__n--stalled">1</span><span class="vit__l">stalled</span></span>
+    <span class="vit vit--zero"><span class="vit__n vit__n--parked">0</span><span class="vit__l">parked</span></span>
+    <span class="vitals__sp"></span>
+    <input class="search search--slim" placeholder="filter by prompt, path, or activity" />
+    <span class="rate"><span class="rate__n">31.4k/min</span><span class="rate__l">throughput</span></span>
+    <span class="rate"><span class="rate__n">17.2M</span><span class="rate__l">today</span></span>
+    <span class="blockmeter">block<span class="blockmeter__bar"><i style="width:38%"></i></span><span class="blockmeter__pct">38%</span><span class="blockmeter__left">3h 21m left</span></span>
+    <button class="newsess">New session<span class="newsess__key">⌘N</span></button>
+  </header>
+
+  <div class="fleet">
+    <section class="sect">
+      <h2 class="sect__head"><span class="sect__title">Needs you</span><span class="sect__note">longest wait first</span><span class="sect__rule"></span></h2>
+      <div class="queue">
+        <div class="qrow qrow--ask">
+          <span class="dot dot--asking"></span>
+          <span class="qrow__why">asking you</span>
+          <span class="qrow__body">
+            <span class="qrow__title">Where should the tier override live?</span>
+            <span class="qrow__sub"><b>checkout-web</b> · <span class="tool">Placement</span> <span class="tool__detail">4 questions</span></span>
+          </span>
+          <span class="qrow__age">waiting 2m</span>
+          <span class="qrow__acts"><button class="act act--go">Answer</button><button class="act act--mute">Dismiss</button></span>
+        </div>
+        <div class="qrow qrow--stall">
+          <span class="dot dot--stalled"></span>
+          <span class="qrow__why">stalled</span>
+          <span class="qrow__body">
+            <span class="qrow__title">Pull the staging container logs and find what is slow</span>
+            <span class="qrow__sub"><b>checkout-api</b> · silent since <span class="tool">Bash</span> <span class="tool__detail">docker compose logs checkout-api --since 30m --tail 200 --no-color</span></span>
+          </span>
+          <span class="qrow__age">waiting 4m</span>
+          <span class="qrow__acts"><button class="act act--go">Nudge</button><button class="act">Open</button><button class="act act--mute">Dismiss</button></span>
+        </div>
+        <div class="qrow qrow--wait">
+          <span class="dot dot--idle"></span>
+          <span class="qrow__why">waiting on you</span>
+          <span class="qrow__body">
+            <span class="qrow__title">Check the PRICING_TASKS list against the working-tree code</span>
+            <span class="qrow__sub"><b>checkout-api</b> · last <span class="tool">Bash</span> <span class="tool__detail">pytest tests/test_tier_matching.py -q</span></span>
+          </span>
+          <span class="qrow__age">waiting 44s</span>
+          <span class="qrow__acts"><button class="act act--go">Open</button><button class="act act--mute">Dismiss</button></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="sect">
+      <h2 class="sect__head"><span class="sect__title">Running</span><span class="sect__note">2 sessions · live</span><span class="sect__rule"></span></h2>
+      <div class="tiles">
+        <button class="tile">
+          <span class="tile__head"><span class="dot dot--working"></span><span class="tile__proj"><b>checkout-api</b> · main</span><span class="tile__age">1h 07m</span></span>
+          <span class="tile__title">Check the PRICING_TASKS list against the working-tree code</span>
+          <span class="tile__now"><span class="tool">Bash</span><span class="tool__detail">pytest tests/test_tier_matching.py -q</span></span>
+          <span class="tile__foot">
+            <span class="pulse"><i style="height:5px"></i><i class="is-on" style="height:9px"></i><i class="is-on" style="height:13px"></i><i class="is-on" style="height:7px"></i><i class="is-on" style="height:15px"></i><i class="is-on" style="height:11px"></i><i class="is-on" style="height:16px"></i><i class="is-on" style="height:12px"></i><i style="height:2px"></i><i style="height:2px"></i><i class="is-on" style="height:6px"></i><i class="is-on" style="height:14px"></i></span>
+            <span class="tile__model">opus-5</span>
+            <span class="ctx"><span class="ctx__bar"><i style="width:9%"></i></span><span class="ctx__n">88.2k / 1.0M</span></span>
+          </span>
+        </button>
+        <button class="tile">
+          <span class="tile__head"><span class="dot dot--idle" title="idle"></span><span class="tile__proj"><b>checkout-web</b> · checkout-retry</span><span class="tile__age">12m</span></span>
+          <span class="tile__title">Show a retry banner when a checkout quote expires mid-flow</span>
+          <span class="running"><span class="working__bars"><i></i><i></i><i></i></span>workflow<span class="running__since">4m</span></span>
+          <span class="tile__now"><span class="tool">Edit</span><span class="tool__detail">src/components/QuoteRetryBanner.tsx</span></span>
+          <span class="tile__foot">
+            <span class="pulse"><i class="is-on" style="height:12px"></i><i class="is-on" style="height:8px"></i><i class="is-on" style="height:14px"></i><i class="is-on" style="height:10px"></i><i style="height:2px"></i><i style="height:2px"></i><i style="height:2px"></i><i style="height:2px"></i><i style="height:2px"></i><i style="height:2px"></i><i style="height:2px"></i><i style="height:2px"></i></span>
+            <span class="tile__model">opus-5</span>
+            <span class="ctx"><span class="ctx__bar"><i class="is-warn" style="width:81%"></i></span><span class="ctx__n">162.4k / 200.0k</span></span>
+          </span>
+        </button>
+      </div>
+    </section>
+
+    <section class="sect">
+      <h2 class="sect__head"><span class="sect__title">Rest of the fleet</span><span class="sect__note">12 projects · nothing here needs you</span><span class="sect__rule"></span></h2>
+      <div class="rest">
+        <div class="prow prow--open">
+          <button class="prow__head">
+            <span class="prow__go">›</span>
+            <span class="prow__name">checkout-api</span>
+            <span class="prow__path"><i>~/code/acme/checkout-api/services/pricing-resolver</i></span>
+            <span class="prow__tally"><span class="tally tally--parked"><span class="dot dot--parked"></span>4 parked</span><span class="tally"><span class="dot dot--ended"></span>42 ended</span></span>
+            <span class="prow__age">18h</span>
+          </button>
+          <div class="prow__body">
+            <div class="slist">
+              <button class="sline">
+                <span class="dot dot--parked"></span>
+                <span class="sline__title">still I want the tier fallback to be explicit rather than implicit</span>
+                <span class="sline__last"><span class="running"><span class="working__bars"><i></i><i></i><i></i></span>2 tasks<span class="running__since">11m</span></span></span>
+                <span class="sline__ctx">149.0k</span>
+                <span class="sline__age">18h</span>
+                <span class="sline__act"><span class="mini">resume</span></span>
+              </button>
+              <button class="sline">
+                <span class="dot dot--parked"></span>
+                <span class="sline__title">do you have an update on the tier merges?</span>
+                <span class="sline__last"><b>Skill</b> release-notes-style</span>
+                <span class="sline__ctx">173.0k</span>
+                <span class="sline__age">20h</span>
+                <span class="sline__act"><span class="mini">resume</span></span>
+              </button>
+            </div>
+            <div class="prow__foot">
+              <button class="linkish">▸ 42 ended sessions</button>
+              <button class="prow__new">+ New session here</button>
+            </div>
+          </div>
+        </div>
+        <div class="prow">
+          <button class="prow__head">
+            <span class="prow__go">›</span>
+            <span class="prow__name">docs-site</span>
+            <span class="prow__path"><i>~/code/acme/docs-site/content/reference/checkout</i></span>
+            <span class="prow__tally"><span class="tally tally--idle"><span class="dot dot--idle"></span>2 idle</span><span class="tally"><span class="dot dot--ended"></span>31 ended</span></span>
+            <span class="prow__age">19h</span>
+          </button>
+        </div>
+        <div class="prow">
+          <button class="prow__head">
+            <span class="prow__go">›</span>
+            <span class="prow__name">pricing-engine</span>
+            <span class="prow__path"><i>~/code/acme/pricing-engine/services/rule-gate/src</i></span>
+            <span class="prow__tally"><span class="tally"><span class="dot dot--ended"></span>4 ended</span></span>
+            <span class="prow__age">9d</span>
+          </button>
+        </div>
+      </div>
+      <button class="more more--flat">▸ 4 more projects</button>
+    </section>
+  </div>
+</div>

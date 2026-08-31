@@ -1,0 +1,50 @@
+<!-- @dsCard group="Session" name="Transcript entries" -->
+<!-- @styles: Session page, Conversation entries, Rendered markdown in assistant messages -->
+
+<p class="ds-note">Your prompts stay literal. Claude's replies render as markdown, tables included.</p>
+
+<div class="page__column">
+  <div class="entry entry--user">
+    <div class="entry__gutter">you</div>
+    <div class="entry__body">read the pricing code itself, not the handoff docs, I don't trust them!</div>
+  </div>
+
+  <div class="entry entry--assistant">
+    <div class="entry__gutter">claude</div>
+    <div class="entry__body entry__body--md">
+      <details class="thinking">
+        <summary>thinking</summary>
+        <div class="thinking__body">The doc claims the rule gate runs before the discount stage, but the tier resolver orders them the other way.</div>
+      </details>
+      <p>Read from the code rather than the handoff, the quote pipeline is four stages, and the third is the one the document gets wrong.</p>
+      <h2>What gets written</h2>
+      <p>On create, the Tier is minted with <code>tier_id = tier:{plan_key}</code> and its rates are computed <strong>from its own plan</strong>.</p>
+      <ul>
+        <li><strong>apply</strong> — attach the quote to the existing Tier.</li>
+        <li><strong>create</strong> — mint the quote's own Tier; they are different plans.</li>
+        <li><strong>flag</strong> — write a pending review row and let a human decide.</li>
+      </ul>
+      <div class="md-table">
+        <table>
+          <thead><tr><th>Path</th><th>Lookup</th><th>Fallback</th><th>Per run</th></tr></thead>
+          <tbody>
+            <tr><td><code>rule_gate</code>, cache → live</td><td>~$0.05/1k</td><td>$0</td><td>~$262</td></tr>
+            <tr><td>legacy pricing, cache → live</td><td>~$0.05/1k</td><td>$0</td><td>~$262</td></tr>
+            <tr><td>legacy pricing, table → live</td><td>$0</td><td>billed to the plan owner</td><td>~$0</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <pre><code>if quote.margin >= 0.93:
+    return Decision.APPLY
+</code></pre>
+      <blockquote>The asymmetry is the point: applying a tier at quote time is irreversible.</blockquote>
+    </div>
+  </div>
+
+  <div class="entry entry--assistant entry--sub">
+    <div class="entry__gutter">subagent</div>
+    <div class="entry__body entry__body--md">
+      <p>Scope: dead-code dimension only. Found 4 candidates, 2 confirmed by call-graph.</p>
+    </div>
+  </div>
+</div>

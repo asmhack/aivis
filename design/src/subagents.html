@@ -1,0 +1,137 @@
+<!-- @dsCard group="Session" name="Subagents rail" viewport="1500x820" -->
+<!-- @styles: Status dots, Session rail, Subagents rail, Drill-in navigation, Docked detail, Run and phase headers, Live activity strip, Agent detail -->
+
+<p class="ds-note">Session rail · agents</p>
+<p class="ds-sub">Loose subagents are few and usually in flight, so this tab stays a flat list — no phases, no roll-up. Each card leads with what the agent is doing right now; opening one shows its tool stream and, once finished, whatever it reported back. The open agent docks beside the list rather than replacing it, so hopping between two agents that are running at once never goes through the back arrow.</p>
+
+<div class="ds-row">
+  <div class="ds-col" style="width:560px">
+    <span class="ds-cap"><b>List.</b> Running first, current activity in the card.</span>
+    <div class="ds-frame">
+      <aside class="rail" style="height:660px">
+        <div class="rail__grip" title="Drag to resize"></div>
+        <div class="rail__tabs">
+          <button class="rail__tab">tools<span class="rail__count">90</span></button>
+          <button class="rail__tab rail__tab--on">agents<span class="rail__count">3</span></button>
+          <button class="rail__tab" disabled>workflows<span class="rail__count">0</span></button>
+          <button class="rail__close">✕</button>
+        </div>
+        <div class="crumbs">
+          <button class="crumbs__back" disabled>‹</button>
+          <div class="crumbs__path"><span class="crumbs__now">3 subagents · 2 running</span></div>
+        </div>
+        <div class="rail__body">
+          <div class="rail__section">
+            <p class="grouphead">running</p>
+            <article class="sub sub--running">
+              <header class="sub__head">
+                <span class="dot dot--working"></span>
+                <span class="sub__name">Pull checkout request logs</span>
+                <span class="sub__type">general-purpose</span>
+                <span class="sub__age">12s</span>
+              </header>
+              <p class="live"><span class="live__who">Bash</span><span class="live__what">docker compose logs checkout-api --no-color --since 30m --tail 500</span><span class="live__age">now</span></p>
+              <div class="stats">
+                <span class="stat">turns <b>24</b></span>
+                <span class="stat">tools <b>12</b></span>
+                <span class="stat">tokens <b>96.4k</b></span>
+              </div>
+            </article>
+            <article class="sub sub--running">
+              <header class="sub__head">
+                <span class="dot dot--working"></span>
+                <span class="sub__name">Map the resolution ladder</span>
+                <span class="sub__type">Explore</span>
+                <span class="sub__age">3m 40s</span>
+              </header>
+              <p class="live"><span class="live__who">Grep</span><span class="live__what">resolved_tier_id — app/pricing/**</span><span class="live__age">6s</span></p>
+              <div class="stats">
+                <span class="stat">turns <b>9</b></span>
+                <span class="stat">tools <b>31</b></span>
+                <span class="stat">tokens <b>412k</b></span>
+              </div>
+            </article>
+
+            <p class="grouphead">finished</p>
+            <article class="sub">
+              <header class="sub__head">
+                <span class="dot dot--ended"></span>
+                <span class="sub__name">Trace the rule gate backfill</span>
+                <span class="sub__type">Explore</span>
+                <span class="sub__age">11d</span>
+              </header>
+              <p class="live live--idle"><span class="live__who">result</span><span class="live__what">101 call sites, single writer — see reasoning</span><span class="live__age">ran 4m 12s</span></p>
+              <div class="stats">
+                <span class="stat">turns <b>14</b></span>
+                <span class="stat">tools <b>44</b></span>
+                <span class="stat">tokens <b>1.2M</b></span>
+              </div>
+            </article>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="ds-col" style="width:840px">
+    <span class="ds-cap"><b>Docked detail.</b> Rail at 75%: list stays left, tool stream right; one click to switch agents.</span>
+    <div class="ds-frame">
+      <aside class="rail" style="height:660px">
+        <div class="rail__grip"></div>
+        <div class="rail__tabs">
+          <button class="rail__tab">tools<span class="rail__count">90</span></button>
+          <button class="rail__tab rail__tab--on">agents<span class="rail__count">3</span></button>
+          <button class="rail__tab" disabled>workflows<span class="rail__count">0</span></button>
+          <button class="rail__close">✕</button>
+        </div>
+        <div class="crumbs">
+          <button class="crumbs__back">‹</button>
+          <div class="crumbs__path"><span class="crumbs__now">3 subagents · 2 running</span></div>
+        </div>
+        <div class="rail__body rail__body--split">
+          <div class="split">
+            <nav class="split__list">
+              <p class="split__group">running · 2</p>
+              <button class="li li--on"><span class="dot dot--working"></span><span class="li__name">Pull checkout request logs</span></button>
+              <button class="li"><span class="dot dot--working"></span><span class="li__name">Map the resolution ladder</span></button>
+              <p class="split__group">finished · 1</p>
+              <button class="li"><span class="dot dot--ended"></span><span class="li__name">Trace the rule gate backfill</span></button>
+            </nav>
+            <div class="split__detail">
+              <div class="detail">
+                <div class="detail__head">
+                  <span class="dot dot--working"></span>
+                  <span class="detail__name">Pull checkout request logs</span>
+                  <span class="detail__state">running</span>
+                </div>
+                <div class="stats">
+                  <span class="stat">type <b>general-purpose</b></span>
+                  <span class="stat">model <b>sonnet-5</b></span>
+                  <span class="stat">up <b>4m 02s</b></span>
+                  <span class="stat">turns <b>24</b></span>
+                  <span class="stat">tokens <b>96.4k</b></span>
+                </div>
+                <p class="live"><span class="live__who">Bash</span><span class="live__what">docker compose logs checkout-api --no-color --since 30m --tail 500</span><span class="live__age">now</span></p>
+
+                <div class="field field--wide">
+                  <span class="field__label">Objective</span>
+                  <span class="field__value">Find which HTTP endpoints in checkout-api exceed 2s p95, and whether the slow ones share a code path.</span>
+                </div>
+
+                <div class="toolstream">
+                  <div class="toolstream__row"><span class="toolstream__name">Bash</span><span class="toolstream__arg">docker compose ps</span><span class="toolstream__t">4m ago</span></div>
+                  <div class="toolstream__row"><span class="toolstream__name">Bash</span><span class="toolstream__arg">awk '$3 &gt;= "WARNING"' logs/checkout.log | tail -200</span><span class="toolstream__t">3m ago</span></div>
+                  <div class="toolstream__row"><span class="toolstream__name">Read</span><span class="toolstream__arg">app/api/routes.py</span><span class="toolstream__t">2m ago</span></div>
+                  <div class="toolstream__row"><span class="toolstream__name">Grep</span><span class="toolstream__arg">@router.post</span><span class="toolstream__t">88s ago</span></div>
+                  <div class="toolstream__row"><span class="toolstream__name">Bash</span><span class="toolstream__arg">docker compose logs checkout-api --no-color --since 30m</span><span class="toolstream__t">now</span></div>
+                </div>
+
+                <details class="block" open><summary>notes so far</summary><p class="block__body">Two services in the stack: checkout-api, checkout-worker. Warnings are dominated by /v1/quote — 140 of 200 entries. Fetching the full request log to compute p95 per route.</p></details>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>

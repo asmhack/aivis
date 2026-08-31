@@ -1,0 +1,26 @@
+<!-- @dsCard group="Fleet" name="Vitals bar" -->
+<!-- @styles: Status dots, Vitals bar, Status legend, New-session entry points, Block usage meter -->
+
+<p class="ds-note">Vitals bar</p>
+<p class="ds-sub">Sticky over the index: identity, connection state, and the counts the fleet reduces to. Three of them are states a session is in — <b>working</b>, <b>idle</b>, <b>parked</b> — and the other three are queues drawn from those sessions, so <b>waiting on you</b> is a subset of idle rather than a rival to it, and <b>asking you</b> a subset of working. Idle earns a count of its own because it is the state most of a busy machine is in: a terminal left open costs nothing, and a header that omitted it read as an empty machine. The <code>?</code> at the end opens the legend, which is where those words are actually defined. Throughput and the block meter sit on the right, where a figure that only ever changes slowly belongs.</p>
+
+<div class="ds-frame">
+  <header class="vitals">
+    <span class="vitals__mark">ai<b>vis</b></span>
+    <span class="conn conn--open">open</span>
+    <span class="vit"><span class="vit__n vit__n--working">2</span><span class="vit__l">working</span></span>
+    <span class="vit"><span class="vit__n vit__n--working">1</span><span class="vit__l">background</span></span>
+    <span class="vit"><span class="vit__n vit__n--idle">15</span><span class="vit__l">idle</span></span>
+    <span class="vit"><span class="vit__n vit__n--asking">1</span><span class="vit__l">asking you</span></span>
+    <span class="vit"><span class="vit__n vit__n--waiting">1</span><span class="vit__l">waiting on you</span></span>
+    <span class="vit"><span class="vit__n vit__n--stalled">1</span><span class="vit__l">stalled</span></span>
+    <span class="vit vit--zero"><span class="vit__n vit__n--parked">0</span><span class="vit__l">parked</span></span>
+    <button class="legendtoggle">?</button>
+    <span class="vitals__sp"></span>
+    <input class="search search--slim" placeholder="filter by prompt, path, or activity" />
+    <span class="rate"><span class="rate__n">31.4k/min</span><span class="rate__l">throughput</span></span>
+    <span class="rate"><span class="rate__n">17.2M</span><span class="rate__l">today</span></span>
+    <span class="blockmeter"><span class="blockmeter__bar"><i style="width:38%"></i></span><span class="blockmeter__pct">38%</span><span class="blockmeter__left">3h 21m left</span></span>
+    <button class="newsess">New session<span class="newsess__key">⌘N</span></button>
+  </header>
+</div>

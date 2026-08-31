@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      Images may only come from this machine. A message is written by a model that may be
+      repeating an instruction it read in a web page or a checked-in file, and a browser
+      fetches an <img> the moment it renders, so a remote source would be an outbound
+      request the reader never asked for, carrying whatever the address encodes. The
+      renderer already refuses one (`classifyImageSource` in web/imageSource.ts, used by
+      MessageImage in web/components/SessionPage.tsx); this is the browser enforcing the
+      same rule. blob: is there because a pasted screenshot is
+      decoded through an object URL before it is re-encoded (web/images.ts).
+    -->
+    <meta http-equiv="Content-Security-Policy" content="img-src 'self' data: blob:" />
+    <title>aivis</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/web/main.tsx"></script>
+  </body>
+</html>

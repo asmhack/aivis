@@ -1,0 +1,78 @@
+<!-- @dsCard group="Foundations" name="Status and pills" -->
+<!-- @styles: Status dots, Vitals bar, Status legend, Rest of the fleet, Session page, Shared with the session page -->
+
+<p class="ds-note">Status is one vocabulary, said three ways</p>
+<p class="ds-sub">A dot carries the state everywhere it appears. The vitals bar says the same states as counts, and a project tally repeats them with the dot beside the number, so a row of the fleet list and the header never disagree about what a session is. What none of those three can do is say what the words <em>mean</em> — <b>parked</b> is aivis's own invention and <b>idle</b> sounds like a criticism when it only means a terminal is open — so the same sentence sits behind every count as a tooltip and, spelled out, in the legend below.</p>
+
+<div class="ds-stack">
+  <div class="ds-row" style="align-items: center; gap: 22px;">
+    <span style="display: inline-flex; align-items: center; gap: 7px; font-size: 12px;"><span class="dot dot--working"></span>working</span>
+    <span style="display: inline-flex; align-items: center; gap: 7px; font-size: 12px;"><span class="dot dot--asking"></span>asking</span>
+    <span style="display: inline-flex; align-items: center; gap: 7px; font-size: 12px;"><span class="dot dot--stalled"></span>stalled</span>
+    <span style="display: inline-flex; align-items: center; gap: 7px; font-size: 12px;"><span class="dot dot--idle"></span>idle</span>
+    <span style="display: inline-flex; align-items: center; gap: 7px; font-size: 12px;"><span class="dot dot--parked"></span>parked</span>
+    <span style="display: inline-flex; align-items: center; gap: 7px; font-size: 12px;"><span class="dot dot--ended"></span>ended</span>
+  </div>
+
+  <div class="ds-row" style="align-items: center; gap: 22px;">
+    <span class="vit"><span class="vit__n vit__n--working">2</span><span class="vit__l">working</span></span>
+    <span class="vit"><span class="vit__n vit__n--idle">15</span><span class="vit__l">idle</span></span>
+    <span class="vit"><span class="vit__n vit__n--asking">1</span><span class="vit__l">asking you</span></span>
+    <span class="vit"><span class="vit__n vit__n--waiting">1</span><span class="vit__l">waiting on you</span></span>
+    <span class="vit"><span class="vit__n vit__n--stalled">1</span><span class="vit__l">stalled</span></span>
+    <span class="vit vit--zero"><span class="vit__n vit__n--parked">0</span><span class="vit__l">parked</span></span>
+  </div>
+
+  <div class="ds-row" style="align-items: center; gap: 22px;">
+    <span class="prow__tally">
+      <span class="tally tally--working"><span class="dot dot--working"></span>1 working</span>
+      <span class="tally tally--stalled"><span class="dot dot--stalled"></span>1 stalled</span>
+      <span class="tally tally--idle"><span class="dot dot--idle"></span>3 idle</span>
+      <span class="tally tally--parked"><span class="dot dot--parked"></span>4 parked</span>
+      <span class="tally"><span class="dot dot--ended"></span>42 ended</span>
+    </span>
+  </div>
+
+  <div class="legend">
+    <p class="legend__lede">Every session is in exactly one of five states, decided by whether a <code>claude</code> process is alive and by what its transcript last recorded. <b>asking you</b> and <b>waiting on you</b> are not states but queues, drawn from those sessions. Right now 18 sessions have a live process on this machine.</p>
+    <dl class="legend__list">
+      <div class="legend__row">
+        <dt class="legend__term"><span class="dot dot--working"></span>working</dt>
+        <dd class="legend__body">A claude process is alive and its transcript is advancing right now. This is the only state where tokens are being spent.</dd>
+      </div>
+      <div class="legend__row">
+        <dt class="legend__term"><span class="dot dot--idle"></span>idle</dt>
+        <dd class="legend__body">A process is alive but its turn has finished: a terminal you left open. It costs nothing, holds its whole context, and carries on the moment you write to it.</dd>
+      </div>
+      <div class="legend__row">
+        <dt class="legend__term"><span class="dot dot--asking"></span>asking you</dt>
+        <dd class="legend__body">The session put a multiple-choice question to you and stopped mid-turn for the answer. This is the only queue here that a session asked to be in rather than being inferred from silence, and the only one where something is genuinely blocked. A session aivis drives can be answered from its own page; one running in a terminal has to be answered there.</dd>
+      </div>
+      <div class="legend__row">
+        <dt class="legend__term"><span class="dot dot--idle"></span>waiting on you</dt>
+        <dd class="legend__body">An idle session that stopped within the last 4 hours, so it is probably holding for your reply rather than simply left open. These are counted under idle as well — the queue is a view of the fleet, not a place a session moves to.</dd>
+      </div>
+      <div class="legend__row">
+        <dt class="legend__term"><span class="dot dot--stalled"></span>stalled</dt>
+        <dd class="legend__body">Alive and mid-turn, but nothing has been written for over 2 minutes and it has not said why. Usually a long-running command, or a session in a terminal holding at a prompt only that terminal can answer. A session that stopped to ask you something is counted under asking you instead, because it said so.</dd>
+      </div>
+      <div class="legend__row">
+        <dt class="legend__term"><span class="dot dot--parked"></span>parked</dt>
+        <dd class="legend__body">No process is running, but aivis saw this session alive before — usually the machine was shut down. Sending to it resumes it exactly where it stopped. Kept for 14 days after it was last seen running.</dd>
+      </div>
+      <div class="legend__row">
+        <dt class="legend__term"><span class="dot dot--ended"></span>ended</dt>
+        <dd class="legend__body">No process and no record of one: an ordinary finished transcript. Still on disk, and still resumable by copying its resume command into a terminal.</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="ds-row">
+    <span class="pill pill--live">pid 13080</span>
+    <span class="pill">bypassPermissions</span>
+    <span class="pill">4 subagent turns</span>
+    <span class="pill pill--warn">8 MB · counts partial</span>
+    <span class="conn conn--open">open</span>
+    <span class="conn conn--closed">closed</span>
+  </div>
+</div>

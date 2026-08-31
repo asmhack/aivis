@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security issue
+    url: https://github.com/asmhack/aivis/security/advisories/new
+    about: Please report anything security-related privately, not as a public issue.

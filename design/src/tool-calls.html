@@ -1,0 +1,65 @@
+<!-- @dsCard group="Session" name="Tool calls" -->
+<!-- @styles: Session page, Conversation entries, Tool calls, Tool call rows, Session rail, Running tiles -->
+
+<p class="ds-note">Collapsed in the conversation, expanded on demand, and listed compactly in the rail.</p>
+
+<div class="ds-stack">
+  <div class="page__column">
+    <details class="tool-entry">
+      <summary>
+        <span class="tool">Bash</span>
+        <span class="tool__detail">pytest tests/test_tier_matching.py -q</span>
+        <span class="tool__time">01:14:22 PM</span>
+      </summary>
+    </details>
+
+    <details class="tool-entry" open>
+      <summary>
+        <span class="tool">Edit</span>
+        <span class="tool__detail">app/pricing/tier_resolver.py</span>
+        <span class="tool__time">01:15:07 PM</span>
+      </summary>
+      <div class="tool-entry__body">
+        <pre class="tool-entry__input">{
+  "file_path": "app/pricing/tier_resolver.py",
+  "old_string": "if score > 0.9:",
+  "new_string": "if score >= 0.93:"
+}</pre>
+        <pre class="tool-entry__result">Applied 1 edit to app/pricing/tier_resolver.py</pre>
+      </div>
+    </details>
+
+    <details class="tool-entry tool-entry--error">
+      <summary>
+        <span class="tool">Bash</span>
+        <span class="tool__detail">curl -sf http://localhost:8787/v1/quote/health</span>
+        <span class="tool__time">01:16:41 PM</span>
+      </summary>
+    </details>
+  </div>
+
+  <aside class="rail" style="width: 330px; height: 320px;">
+    <div class="rail__tabs">
+      <button class="rail__tab rail__tab--on">tools<span class="rail__count">90</span></button>
+      <button class="rail__tab">agents<span class="rail__count">2</span></button>
+      <button class="rail__tab" disabled>workflows<span class="rail__count">0</span></button>
+      <button class="rail__close">✕</button>
+    </div>
+    <div class="rail__body">
+      <div class="rail__section">
+        <button class="toolrow">
+          <span class="toolrow__head"><span class="tool">Bash</span><span class="toolrow__time">01:14:22 PM</span></span>
+          <span class="toolrow__detail">pytest tests/test_tier_matching.py -q</span>
+        </button>
+        <button class="toolrow">
+          <span class="toolrow__head"><span class="tool">Edit</span><span class="toolrow__time">01:15:07 PM</span></span>
+          <span class="toolrow__detail">app/pricing/tier_resolver.py</span>
+        </button>
+        <button class="toolrow toolrow--error">
+          <span class="toolrow__head"><span class="tool">Bash</span><span class="toolrow__time">01:16:41 PM</span></span>
+          <span class="toolrow__detail">curl -sf http://localhost:8787/v1/quote/health</span>
+        </button>
+      </div>
+    </div>
+  </aside>
+</div>

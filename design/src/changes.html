@@ -1,0 +1,283 @@
+<!-- @dsCard group="Session" name="Changes rail" viewport="1700x1200" -->
+<!-- @styles: Session rail, Drill-in navigation, Docked detail, Filter bar, Files rail, Diffs — how a file edit is shown instead of its raw tool input. -->
+
+<p class="ds-note">Session rail · changes</p>
+<p class="ds-sub">A fourth tab beside tools, agents and workflows, opened from the <b>12 files</b> count in the session meta bar. Same shell, same half-screen resizable rail, same one-level-at-a-time drill-in: the list answers <i>what did this session touch</i>, a file answers <i>what exactly changed and which tool call did it</i>. The diff base is explicit and switchable, because “changed” means one thing against the commit the session started from and another against HEAD. Opening a file docks its diff beside the file list at three quarters of the window, so walking a review file by file costs one click each rather than a trip back through the list.</p>
+
+<div class="ds-row">
+  <div class="ds-col" style="width:660px">
+    <span class="ds-cap"><b>Level 1 — what the session touched.</b> Grouped by directory, busiest first.</span>
+    <div class="ds-frame">
+      <aside class="rail" style="height:960px">
+        <div class="rail__grip" title="Drag to resize"></div>
+        <div class="rail__tabs">
+          <button class="rail__tab">tools<span class="rail__count">33</span></button>
+          <button class="rail__tab">agents<span class="rail__count">2</span></button>
+          <button class="rail__tab">workflows<span class="rail__count">1</span></button>
+          <button class="rail__tab rail__tab--on">files<span class="rail__count">12</span></button>
+          <button class="rail__close">✕</button>
+        </div>
+        <div class="crumbs">
+          <button class="crumbs__back" disabled>‹</button>
+          <div class="crumbs__path"><span class="crumbs__now">changes · 12 files</span></div>
+        </div>
+        <div class="rail__body">
+          <div class="changes">
+            <div class="sum">
+              <div class="sum__head">
+                <span class="sum__n">12 files</span>
+                <span class="sum__diff"><span class="add">+1070</span> <span class="del">−56</span></span>
+                <select class="sum__base">
+                  <option>vs session start</option>
+                  <option>uncommitted</option>
+                  <option>this session's edits</option>
+                </select>
+              </div>
+              <p class="sum__note">since <b>3f1c8a20</b> · 1h ago · main</p>
+              <p class="sum__legend">
+                <span><b class="st st--a">A</b> added</span>
+                <span><b class="st st--m">M</b> modified</span>
+                <span><b class="st st--d">D</b> deleted</span>
+                <span><b class="st st--r">R</b> renamed</span>
+              </p>
+            </div>
+
+            <div class="filters">
+              <button class="chip chip--on">all 12</button>
+              <button class="chip">added 3</button>
+              <button class="chip">modified 6</button>
+              <button class="chip chip--del">deleted 2</button>
+              <button class="chip">renamed 1</button>
+              <input class="filters__find" placeholder="filter path…" />
+            </div>
+
+            <div class="dirgroup">
+              <p class="dirgroup__head"><b>app/pricing</b> · 5 files</p>
+              <div class="flist">
+                <button class="frow">
+                  <span class="st st--m">M</span>
+                  <span class="frow__name">tier_resolver.py</span>
+                  <span></span>
+                  <span class="frow__nums"><span class="add">+412</span> <span class="del">−18</span></span>
+                  <span class="spark"><i class="is-add"></i><i class="is-add"></i><i class="is-add"></i><i class="is-add"></i><i class="is-del"></i></span>
+                  <span class="frow__go">›</span>
+                </button>
+                <button class="frow">
+                  <span class="st st--m">M</span>
+                  <span class="frow__name">matching.py</span>
+                  <span></span>
+                  <span class="frow__nums"><span class="add">+188</span> <span class="del">−22</span></span>
+                  <span class="spark"><i class="is-add"></i><i class="is-add"></i><i class="is-add"></i><i class="is-del"></i><i></i></span>
+                  <span class="frow__go">›</span>
+                </button>
+                <button class="frow">
+                  <span class="st st--a">A</span>
+                  <span class="frow__name">rule_gate.py</span>
+                  <span class="frow__tag">binary</span>
+                  <span class="frow__nums"><span class="add">+147</span></span>
+                  <span class="spark"><i class="is-add"></i><i class="is-add"></i><i class="is-add"></i><i class="is-add"></i><i></i></span>
+                  <span class="frow__go">›</span>
+                </button>
+                <button class="frow">
+                  <span class="st st--r">R</span>
+                  <span class="frow__name">record_keys.py<em> ← keys.py</em></span>
+                  <span class="frow__tag">98% same</span>
+                  <span class="frow__nums"><span class="add">+12</span> <span class="del">−9</span></span>
+                  <span class="spark"><i class="is-add"></i><i class="is-del"></i><i></i><i></i><i></i></span>
+                  <span class="frow__go">›</span>
+                </button>
+                <button class="frow">
+                  <span class="st st--d">D</span>
+                  <span class="frow__name">legacy_pricing.py</span>
+                  <span></span>
+                  <span class="frow__nums"><span class="del">−27</span></span>
+                  <span class="spark"><i class="is-del"></i><i class="is-del"></i><i></i><i></i><i></i></span>
+                  <span class="frow__go">›</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="dirgroup">
+              <p class="dirgroup__head"><b>docs</b> · 2 files</p>
+              <div class="flist">
+                <button class="frow">
+                  <span class="st st--m">M</span>
+                  <span class="frow__name">PRICING_TASKS.md</span>
+                  <span></span>
+                  <span class="frow__nums"><span class="add">+96</span> <span class="del">−4</span></span>
+                  <span class="spark"><i class="is-add"></i><i class="is-add"></i><i class="is-add"></i><i class="is-del"></i><i></i></span>
+                  <span class="frow__go">›</span>
+                </button>
+                <button class="frow">
+                  <span class="st st--a">A</span>
+                  <span class="frow__name">PRICING_HANDOFF.md</span>
+                  <span></span>
+                  <span class="frow__nums"><span class="add">+84</span></span>
+                  <span class="spark"><i class="is-add"></i><i class="is-add"></i><i class="is-add"></i><i></i><i></i></span>
+                  <span class="frow__go">›</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="dirgroup">
+              <p class="dirgroup__head"><b>root</b> · 1 file</p>
+              <div class="flist">
+                <button class="frow">
+                  <span class="st st--m">M</span>
+                  <span class="frow__name">pyproject.toml</span>
+                  <span></span>
+                  <span class="frow__nums"><span class="add">+3</span></span>
+                  <span class="spark"><i class="is-add"></i><i></i><i></i><i></i><i></i></span>
+                  <span class="frow__go">›</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="ds-col" style="width:940px">
+    <span class="ds-cap"><b>Level 2 — docked diff.</b> Rail at 75%: the file list stays left, hunks and their tool calls on the right.</span>
+    <div class="ds-frame">
+      <aside class="rail" style="height:960px">
+        <div class="rail__grip"></div>
+        <div class="rail__tabs">
+          <button class="rail__tab">tools<span class="rail__count">33</span></button>
+          <button class="rail__tab">agents<span class="rail__count">2</span></button>
+          <button class="rail__tab">workflows<span class="rail__count">1</span></button>
+          <button class="rail__tab rail__tab--on">files<span class="rail__count">12</span></button>
+          <button class="rail__close">✕</button>
+        </div>
+        <div class="crumbs">
+          <button class="crumbs__back">‹</button>
+          <div class="crumbs__path"><span class="crumbs__now">changes · 12 files</span></div>
+        </div>
+        <div class="rail__body rail__body--split">
+          <div class="split">
+            <nav class="split__list">
+              <p class="split__group">app/pricing · 5</p>
+              <button class="li"><span class="st st--m">M</span><span class="li__name li__name--mono">tier_resolver.py</span></button>
+              <button class="li li--on"><span class="st st--m">M</span><span class="li__name li__name--mono">matching.py</span></button>
+              <button class="li"><span class="st st--a">A</span><span class="li__name li__name--mono">rule_gate.py</span></button>
+              <button class="li"><span class="st st--r">R</span><span class="li__name li__name--mono">record_keys.py</span></button>
+              <button class="li"><span class="st st--d">D</span><span class="li__name li__name--mono">legacy_pricing.py</span></button>
+              <p class="split__group">docs · 2</p>
+              <button class="li"><span class="st st--m">M</span><span class="li__name li__name--mono">PRICING_TASKS.md</span></button>
+              <button class="li"><span class="st st--a">A</span><span class="li__name li__name--mono">PRICING_HANDOFF.md</span></button>
+              <p class="split__group">root · 1</p>
+              <button class="li"><span class="st st--m">M</span><span class="li__name li__name--mono">pyproject.toml</span></button>
+            </nav>
+            <div class="split__detail">
+              <div class="changes">
+                <div class="fhead">
+                  <div class="fhead__top">
+                    <span class="st st--m">M</span>
+                    <span class="fhead__path"><i>app/pricing/matching.py</i></span>
+                    <span class="fhead__nums"><span class="add">+188</span> <span class="del">−22</span></span>
+                  </div>
+                  <div class="fhead__meta">
+                    <span>edited <b>3×</b> by this session</span>
+                    <span>last <b>4m ago</b></span>
+                  </div>
+                </div>
+
+                <div class="edits">
+                  <div class="edit">
+                    <div class="edit__head">
+                      <button class="edit__toggle">
+                        <span class="edit__mark">▸</span>
+                        <span class="edit__n">#1</span>
+                        <span class="edit__what"><span class="edit__tool">Edit</span> resolve_tier_id — guard on rule gate</span>
+                        <span class="edit__nums"><span class="add">+31</span> <span class="del">−2</span></span>
+                        <span class="edit__t">22m</span>
+                      </button>
+                      <button class="edit__go" title="Show this tool call in the conversation">↗</button>
+                    </div>
+                  </div>
+
+                  <div class="edit edit--on">
+                    <div class="edit__head">
+                      <button class="edit__toggle">
+                        <span class="edit__mark">▾</span>
+                        <span class="edit__n">#2</span>
+                        <span class="edit__what"><span class="edit__tool">Edit</span> _score_candidates — drop legacy branch</span>
+                        <span class="edit__nums"><span class="del">−22</span></span>
+                        <span class="edit__t">11m</span>
+                      </button>
+                      <button class="edit__go" title="Show this tool call in the conversation">↗</button>
+                    </div>
+                    <div class="diff">
+                      <div class="diff__block">
+                        <div class="diff__body">
+                          <div class="dl dl--ctx"><span class="dl__n">112</span><span class="dl__sign"> </span><span class="dl__text">    scores = []</span></div>
+                          <div class="dl dl--del"><span class="dl__n">113</span><span class="dl__sign">−</span><span class="dl__text">    if <mark class="dl__mark">LEGACY_PRICING_ENABLED</mark>:</span></div>
+                          <div class="dl dl--del"><span class="dl__n">114</span><span class="dl__sign">−</span><span class="dl__text">        from .legacy_pricing import score_legacy</span></div>
+                          <div class="dl dl--del"><span class="dl__n">115</span><span class="dl__sign">−</span><span class="dl__text">        return score_legacy(name, pool)</span></div>
+                          <button class="dl dl--fold"><span class="dl__n"></span><span class="dl__sign">⋯</span><span class="dl__text">18 unchanged lines</span></button>
+                          <div class="dl dl--ctx"><span class="dl__n">134</span><span class="dl__sign"> </span><span class="dl__text">    for cand in pool:</span></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="edit">
+                    <div class="edit__head">
+                      <button class="edit__toggle">
+                        <span class="edit__mark">▸</span>
+                        <span class="edit__n">#3</span>
+                        <span class="edit__what"><span class="edit__tool">MultiEdit</span> 3 hunks</span>
+                        <span class="edit__nums"><span class="add">+149</span></span>
+                        <span class="edit__t">4m</span>
+                      </button>
+                      <button class="edit__go" title="Show this tool call in the conversation">↗</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="fhead__acts">
+                  <button class="act">3 lines context</button>
+                  <button class="act">ignore whitespace</button>
+                  <button class="act">copy path</button>
+                </div>
+
+                <div class="diff diff--git">
+                  <div class="hunk">
+                    <div class="hunk__head">
+                      <span class="hunk__at">@@ -41,7 +41,12 @@</span>
+                      <span class="hunk__ctx">def resolve_tier_id(row, gate)</span>
+                      <span class="hunk__n"><span class="add">+5</span></span>
+                    </div>
+                    <div class="dline dline--ctx"><span class="dline__no">41</span><span class="dline__no">41</span><span class="dline__sign"> </span><span class="dline__code">def resolve_tier_id(row, gate):</span></div>
+                    <div class="dline dline--ctx"><span class="dline__no">42</span><span class="dline__no">42</span><span class="dline__sign"> </span><span class="dline__code">    key = row.get("resolved_tier_id")</span></div>
+                    <div class="dline dline--del"><span class="dline__no">43</span><span class="dline__no"></span><span class="dline__sign">−</span><span class="dline__code">    if key is <mark class="dl__mark">None</mark>:</span></div>
+                    <div class="dline dline--add"><span class="dline__no"></span><span class="dline__no">43</span><span class="dline__sign">+</span><span class="dline__code">    if key is <mark class="dl__mark">unset</mark>:</span></div>
+                    <div class="dline dline--add"><span class="dline__no"></span><span class="dline__no">44</span><span class="dline__sign">+</span><span class="dline__code">        if not gate.allows_unresolved(row):</span></div>
+                    <div class="dline dline--add"><span class="dline__no"></span><span class="dline__no">45</span><span class="dline__sign">+</span><span class="dline__code">            raise RuleGateError(row.plan_id, "unresolved tier id")</span></div>
+                    <div class="dline dline--add"><span class="dline__no"></span><span class="dline__no">46</span><span class="dline__sign">+</span><span class="dline__code">        return None</span></div>
+                    <div class="dline dline--ctx"><span class="dline__no">45</span><span class="dline__no">47</span><span class="dline__sign"> </span><span class="dline__code">    return TierId.parse(key)</span></div>
+                  </div>
+
+                  <div class="hunk">
+                    <div class="hunk__head">
+                      <span class="hunk__at">@@ -112,9 +117,4 @@</span>
+                      <span class="hunk__ctx">def _score_candidates(name, pool)</span>
+                      <span class="hunk__n"><span class="del">−4</span></span>
+                    </div>
+                    <div class="dline dline--ctx"><span class="dline__no">112</span><span class="dline__no">117</span><span class="dline__sign"> </span><span class="dline__code">    scores = []</span></div>
+                    <div class="dline dline--del"><span class="dline__no">113</span><span class="dline__no"></span><span class="dline__sign">−</span><span class="dline__code">    if LEGACY_PRICING_ENABLED:</span></div>
+                    <div class="dline dline--del"><span class="dline__no">114</span><span class="dline__no"></span><span class="dline__sign">−</span><span class="dline__code">        from .legacy_pricing import score_legacy</span></div>
+                    <div class="dline dline--del"><span class="dline__no">115</span><span class="dline__no"></span><span class="dline__sign">−</span><span class="dline__code">        return score_legacy(name, pool)</span></div>
+                    <div class="dline dline--del"><span class="dline__no">116</span><span class="dline__no"></span><span class="dline__sign">−</span><span class="dline__code">​</span></div>
+                    <div class="dline dline--ctx"><span class="dline__no">117</span><span class="dline__no">118</span><span class="dline__sign"> </span><span class="dline__code">    for cand in pool:</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>

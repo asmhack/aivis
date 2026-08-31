@@ -1,0 +1,43 @@
+<!-- @dsCard group="Foundations" name="Colour tokens" -->
+<!-- @styles: Tokens -->
+<style>
+  .sw { display: flex; flex-direction: column; gap: 6px; width: 132px; }
+  .sw__chip { height: 52px; border-radius: 6px; border: 1px solid var(--border); }
+  .sw__name { font-family: var(--mono); font-size: 10px; color: var(--text); }
+  .sw__use { font-size: 10px; line-height: 1.4; color: var(--text-faint); }
+  .grid { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 22px; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-dim); margin: 0 0 10px; }
+</style>
+
+<p class="ds-note">Every colour in aivis comes from these tokens. Change one here and it changes everywhere.</p>
+
+<h2>Surfaces</h2>
+<div class="grid">
+  <div class="sw"><div class="sw__chip" style="background: var(--bg)"></div><span class="sw__name">--bg</span><span class="sw__use">page behind everything</span></div>
+  <div class="sw"><div class="sw__chip" style="background: var(--bg-raised)"></div><span class="sw__name">--bg-raised</span><span class="sw__use">cards, bars, rail</span></div>
+  <div class="sw"><div class="sw__chip" style="background: var(--bg-inset)"></div><span class="sw__name">--bg-inset</span><span class="sw__use">code, inputs, wells</span></div>
+  <div class="sw"><div class="sw__chip" style="background: var(--border)"></div><span class="sw__name">--border</span><span class="sw__use">default hairline</span></div>
+  <div class="sw"><div class="sw__chip" style="background: var(--border-strong)"></div><span class="sw__name">--border-strong</span><span class="sw__use">controls, emphasis</span></div>
+</div>
+
+<h2>Text</h2>
+<div class="grid">
+  <div class="sw"><div class="sw__chip" style="background: var(--text)"></div><span class="sw__name">--text</span><span class="sw__use">body and titles</span></div>
+  <div class="sw"><div class="sw__chip" style="background: var(--text-dim)"></div><span class="sw__name">--text-dim</span><span class="sw__use">secondary copy</span></div>
+  <div class="sw"><div class="sw__chip" style="background: var(--text-faint)"></div><span class="sw__name">--text-faint</span><span class="sw__use">labels, timestamps</span></div>
+  <div class="sw"><div class="sw__chip" style="background: var(--accent)"></div><span class="sw__name">--accent</span><span class="sw__use">links, focus, tool names</span></div>
+</div>
+
+<h2>Status</h2>
+<div class="grid">
+  <div class="sw"><div class="sw__chip" style="background: var(--working)"></div><span class="sw__name">--working</span><span class="sw__use">session is advancing</span></div>
+  <div class="sw"><div class="sw__chip" style="background: var(--stalled)"></div><span class="sw__name">--stalled</span><span class="sw__use">alive but silent</span></div>
+  <div class="sw"><div class="sw__chip" style="background: var(--idle)"></div><span class="sw__name">--idle</span><span class="sw__use">waiting for you</span></div>
+  <div class="sw"><div class="sw__chip" style="background: var(--ended)"></div><span class="sw__name">--ended</span><span class="sw__use">no process left</span></div>
+</div>
+
+<h2>Diff</h2>
+<div class="grid">
+  <div class="sw"><div class="sw__chip" style="background: var(--add)"></div><span class="sw__name">--add</span><span class="sw__use">insertions</span></div>
+  <div class="sw"><div class="sw__chip" style="background: var(--del)"></div><span class="sw__name">--del</span><span class="sw__use">deletions, errors</span></div>
+</div>

@@ -1,0 +1,62 @@
+{
+  "name": "aivis",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local web UI for Claude Code: fleet visibility across every session on this machine.",
+  "keywords": [
+    "claude-code",
+    "dashboard",
+    "developer-tools",
+    "local-first",
+    "agents"
+  ],
+  "license": "MIT",
+  "author": "Serhiy Zaporozhets",
+  "homepage": "https://github.com/asmhack/aivis#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/asmhack/aivis.git"
+  },
+  "bugs": {
+    "url": "https://github.com/asmhack/aivis/issues"
+  },
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "scripts": {
+    "dev": "tsx watch server/index.ts & vite",
+    "dev:server": "tsx watch server/index.ts",
+    "dev:web": "vite",
+    "build": "vite build",
+    "start": "npm run build && AIVIS_SERVE_STATIC=1 tsx server/index.ts",
+    "restart": "npm run stop && npm start",
+    "stop": "node scripts/stop.mjs",
+    "test": "node --import tsx --test test/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm test",
+    "demo": "npm run fixtures && AIVIS_PROJECTS_DIR=fixtures/projects npm run dev",
+    "design:build": "node scripts/design-bundle.mjs",
+    "design:preview": "node scripts/design-bundle.mjs --serve",
+    "serve": "AIVIS_SERVE_STATIC=1 tsx server/index.ts",
+    "fixtures": "node scripts/make-fixtures.mjs"
+  },
+  "dependencies": {
+    "chokidar": "4.0.3",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-markdown": "10.1.0",
+    "remark-gfm": "4.0.1",
+    "ws": "8.21.3"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.5",
+    "@types/ws": "8.18.1",
+    "@vitejs/plugin-react": "5.2.0",
+    "tsx": "4.23.12",
+    "typescript": "5.9.3",
+    "vite": "7.3.6"
+  }
+}

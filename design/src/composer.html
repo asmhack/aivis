@@ -1,0 +1,70 @@
+<!-- @dsCard group="Session" name="Composer" -->
+<!-- @styles: Composer, Working indicator, Image attachments -->
+
+<p class="ds-note">Idle, with attachments, working, and the conflict a session already running in a terminal produces.</p>
+<p class="ds-sub">The working state is the only one that moves. A still word cannot distinguish a session mid-turn from one that stopped an hour ago, which is the question this label exists to answer, so three bars carry the movement and the word behind them takes a slow sweep.</p>
+
+<div class="ds-stack">
+  <div class="ds-frame">
+    <div class="composer">
+      <div class="composer__inner">
+        <p class="composer__state">driven by aivis · auto</p>
+        <div class="composer__row">
+          <textarea class="composer__input" rows="1" placeholder="Send a message to this session…  (Enter to send, Shift+Enter for a new line)"></textarea>
+          <button class="composer__send" disabled>send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ds-frame">
+    <div class="composer">
+      <div class="composer__inner">
+        <div class="attachments">
+          <div class="attachment">
+            <div class="attachment__thumb" style="background:var(--bg)"></div>
+            <span class="attachment__size">312 KB</span>
+            <button class="attachment__remove">✕</button>
+          </div>
+          <div class="attachment">
+            <div class="attachment__thumb" style="background:var(--bg)"></div>
+            <span class="attachment__size">88 KB</span>
+            <button class="attachment__remove">✕</button>
+          </div>
+        </div>
+        <div class="composer__row">
+          <textarea class="composer__input" rows="1">why does the rail collapse here?</textarea>
+          <button class="composer__send">send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ds-frame">
+    <div class="composer">
+      <div class="composer__inner">
+        <p class="composer__state"><span class="working"><span class="working__bars"><i></i><i></i><i></i></span><span class="working__text">working · 2 queued</span></span></p>
+        <div class="composer__row">
+          <textarea class="composer__input" rows="1">use pytest, not unittest</textarea>
+          <button class="composer__send">send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ds-frame">
+    <div class="composer">
+      <div class="composer__inner">
+        <p class="composer__warn">
+          This session is running in a terminal (pid 13080). Sending from here resumes it as a
+          separate process, and both would write to the same conversation.
+          <button class="composer__takeover">resume it here anyway</button>
+        </p>
+        <div class="composer__row">
+          <textarea class="composer__input" rows="1" placeholder="Send a message to this session…"></textarea>
+          <button class="composer__send">send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

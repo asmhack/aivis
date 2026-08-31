@@ -1,0 +1,29 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+
+# Claude Code's own per-machine settings for this project
+.claude/settings.local.json
+
+# Editor state
+.vscode/
+.idea/
+
+# The demo fleet is generated: timestamps are relative to when you run it, so a
+# committed copy would render as a machine that has been asleep since. `npm run demo`
+# regenerates it from scripts/make-fixtures.mjs.
+fixtures/projects/
+
+# Generated from design/src and web/styles.css by `npm run design:build`, and rebuilt in CI.
+design/dist/
+
+# Working artefacts of one machine rather than part of the project.
+AUDIT.md
+*.bak-*
+
+# Local environment and tooling leftovers.
+.env
+.env.*
+*.tsbuildinfo
+coverage/

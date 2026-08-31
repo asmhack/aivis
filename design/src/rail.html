@@ -1,0 +1,280 @@
+<!-- @dsCard group="Session" name="Workflows rail" viewport="2100x960" -->
+<!-- @styles: Status dots, Session rail, Drill-in navigation, Docked detail, Run and phase headers, Progress bars, Phase rows, Failures callout, Live activity strip, Filter bar, Task groups, Agent detail -->
+
+<p class="ds-note">Session rail · workflows</p>
+<p class="ds-sub">The rail opens at half the window width and is drag-resizable from its left edge. Workflows are navigated one level at a time — run, phase, task, agent — so a 74-agent run never renders as a wall of chips. Every level carries its own progress and spend; failures are pulled to the top of the level they occurred in. Opening an agent never replaces the level: the rail widens to three quarters of the window and the agent docks beside the phase’s full agent list, so moving to the next agent is one click rather than a trip back up.</p>
+
+<div class="ds-row">
+  <div class="ds-col" style="width:560px">
+    <span class="ds-cap"><b>Level 1 — the run.</b> Phases, not agents.</span>
+    <div class="ds-frame">
+      <aside class="rail" style="height:760px">
+        <div class="rail__grip" title="Drag to resize"></div>
+        <div class="rail__tabs">
+          <button class="rail__tab">tools<span class="rail__count">22</span></button>
+          <button class="rail__tab" disabled>agents<span class="rail__count">0</span></button>
+          <button class="rail__tab rail__tab--on">workflows<span class="rail__count">1</span></button>
+          <button class="rail__close">✕</button>
+        </div>
+        <div class="crumbs">
+          <button class="crumbs__back" disabled>‹</button>
+          <div class="crumbs__path"><span class="crumbs__now">checkout-doc-audit</span></div>
+        </div>
+        <div class="rail__body">
+          <div class="rail__section">
+            <div class="run">
+              <div class="run__head">
+                <span class="dot dot--working"></span>
+                <span class="run__name">checkout-doc-audit</span>
+                <span class="run__state run__state--working">running</span>
+              </div>
+              <p class="run__goal">Check the pricing docs against working-tree code, find new corner cases, then verify adversarially.</p>
+              <div class="stats">
+                <span class="stat">elapsed <b>1h 07m</b></span>
+                <span class="stat">agents <b>62/74</b></span>
+                <span class="stat">tools <b>775</b></span>
+                <span class="stat">tokens <b>5.4M</b></span>
+                <span class="stat stat--warn">failed <b>3</b></span>
+              </div>
+              <span class="bar">
+                <i class="is-done" style="flex:57"></i>
+                <i class="is-running" style="flex:5"></i>
+                <i class="is-failed" style="flex:3"></i>
+                <i style="flex:9"></i>
+              </span>
+              <div class="legend">
+                <span><i style="background:var(--idle)"></i>57 done</span>
+                <span><i style="background:var(--working)"></i>5 running</span>
+                <span><i style="background:var(--del)"></i>3 failed</span>
+                <span><i style="background:var(--border-strong)"></i>9 queued</span>
+              </div>
+            </div>
+
+            <div class="fails">
+              <div class="fails__head">3 failed</div>
+              <div class="fails__list">
+                <button class="fails__item">code:rule-replay</button>
+                <button class="fails__item">verify:known-gaps:54</button>
+                <button class="fails__item">verify:pricing-fallback:57</button>
+              </div>
+            </div>
+
+            <button class="live">
+              <span class="live__who">verify:v1-quote-recordkeys:49</span>
+              <span class="live__what">Bash · rg -n "resolved_tier_id" app/pricing</span>
+              <span class="live__age">8s</span>
+            </button>
+
+            <div class="phaselist">
+              <button class="phaserow">
+                <span class="phaserow__idx">1</span>
+                <span class="phaserow__name">Find</span>
+                <span class="phaserow__go">›</span>
+                <span class="phaserow__bar"><span class="bar"><i class="is-done" style="flex:13"></i><i class="is-failed" style="flex:1"></i></span></span>
+                <span class="phaserow__meta">
+                  <span>14 agents · 14 tasks</span>
+                  <span>47m</span>
+                  <span>1.8M tokens</span>
+                  <span class="is-fail">failed <b>1</b></span>
+                </span>
+              </button>
+              <button class="phaserow phaserow--active">
+                <span class="phaserow__idx">2</span>
+                <span class="phaserow__name">Verify</span>
+                <span class="phaserow__go">›</span>
+                <span class="phaserow__bar"><span class="bar"><i class="is-done" style="flex:44"></i><i class="is-running" style="flex:5"></i><i class="is-failed" style="flex:2"></i><i style="flex:9"></i></span></span>
+                <span class="phaserow__meta">
+                  <span>60 agents · 13 tasks</span>
+                  <span>19m</span>
+                  <span>3.6M tokens</span>
+                  <span class="is-run">running <b>5</b></span>
+                  <span class="is-fail">failed <b>2</b></span>
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="ds-col" style="width:560px">
+    <span class="ds-cap"><b>Level 2 — one phase.</b> 60 agents roll up into 13 tasks.</span>
+    <div class="ds-frame">
+      <aside class="rail" style="height:760px">
+        <div class="rail__grip"></div>
+        <div class="rail__tabs">
+          <button class="rail__tab">tools<span class="rail__count">22</span></button>
+          <button class="rail__tab" disabled>agents<span class="rail__count">0</span></button>
+          <button class="rail__tab rail__tab--on">workflows<span class="rail__count">1</span></button>
+          <button class="rail__close">✕</button>
+        </div>
+        <div class="crumbs">
+          <button class="crumbs__back">‹</button>
+          <div class="crumbs__path"><button class="crumbs__link">checkout-doc-audit</button><span class="crumbs__sep">/</span><span class="crumbs__now">2. Verify</span></div>
+        </div>
+        <div class="rail__body">
+          <div class="rail__section">
+            <div class="run">
+              <div class="run__head">
+                <span class="dot dot--working"></span>
+                <span class="run__name">2. Verify</span>
+                <span class="run__state run__state--working">5 running</span>
+              </div>
+              <p class="run__goal">A skeptic per contested claim, re-checked against the working tree.</p>
+              <div class="stats">
+                <span class="stat">elapsed <b>19m</b></span>
+                <span class="stat">agents <b>51/60</b></span>
+                <span class="stat">tokens <b>3.6M</b></span>
+                <span class="stat stat--warn">failed <b>2</b></span>
+              </div>
+              <span class="bar"><i class="is-done" style="flex:44"></i><i class="is-running" style="flex:5"></i><i class="is-failed" style="flex:2"></i><i style="flex:9"></i></span>
+            </div>
+
+            <div class="filters">
+              <button class="filters__chip filters__chip--on">all 13</button>
+              <button class="filters__chip filters__chip--fail">failed 2</button>
+              <button class="filters__chip">running 5</button>
+              <input class="filters__find" placeholder="find agent…" />
+            </div>
+
+            <div class="tasklist">
+              <div class="task task--fail">
+                <button class="task__row">
+                  <span class="task__name">verify:v1-known-gaps</span>
+                  <span class="task__n">3 agents</span>
+                  <span class="bar bar--mini"><i class="is-done" style="flex:2"></i><i class="is-failed" style="flex:1"></i></span>
+                  <span class="task__go">▾</span>
+                </button>
+                <div class="insts">
+                  <button class="inst"><span class="dot dot--ended"></span><span class="inst__id">:53</span><span class="inst__verdict">not refuted</span><span class="inst__num">38s</span></button>
+                  <button class="inst"><span class="dot dot--failed"></span><span class="inst__id">:54</span><span class="inst__verdict">tool limit exceeded</span><span class="inst__num">—</span></button>
+                  <button class="inst"><span class="dot dot--ended"></span><span class="inst__id">:55</span><span class="inst__verdict">refuted</span><span class="inst__num">41s</span></button>
+                </div>
+              </div>
+              <div class="task">
+                <button class="task__row">
+                  <span class="task__name">verify:deadcode</span>
+                  <span class="task__n">4 agents</span>
+                  <span class="bar bar--mini"><i class="is-done" style="flex:4"></i></span>
+                  <span class="task__go">▸</span>
+                </button>
+              </div>
+              <div class="task">
+                <button class="task__row">
+                  <span class="task__name">verify:v1-quote-recordkeys</span>
+                  <span class="task__n">8 agents</span>
+                  <span class="bar bar--mini"><i class="is-done" style="flex:5"></i><i class="is-running" style="flex:3"></i></span>
+                  <span class="task__go">▸</span>
+                </button>
+              </div>
+              <div class="task">
+                <button class="task__row">
+                  <span class="task__name">verify:worktree-drift</span>
+                  <span class="task__n">7 agents</span>
+                  <span class="bar bar--mini"><i class="is-done" style="flex:7"></i></span>
+                  <span class="task__go">▸</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="ds-col" style="width:860px">
+    <span class="ds-cap"><b>Level 3 — docked detail.</b> Rail at 75%: the phase's agents stay on the left, the parsed result on the right.</span>
+    <div class="ds-frame">
+      <aside class="rail" style="height:760px">
+        <div class="rail__grip"></div>
+        <div class="rail__tabs">
+          <button class="rail__tab">tools<span class="rail__count">22</span></button>
+          <button class="rail__tab" disabled>agents<span class="rail__count">0</span></button>
+          <button class="rail__tab rail__tab--on">workflows<span class="rail__count">1</span></button>
+          <button class="rail__close">✕</button>
+        </div>
+        <div class="crumbs">
+          <button class="crumbs__back">‹</button>
+          <div class="crumbs__path"><button class="crumbs__link">checkout-doc-audit</button><span class="crumbs__sep">/</span><span class="crumbs__now">2. Verify</span></div>
+        </div>
+        <div class="rail__body rail__body--split">
+          <div class="split">
+            <nav class="split__list">
+              <p class="split__group">verify:v1-known-gaps · 3</p>
+              <button class="li"><span class="dot dot--ended"></span><span class="li__id">:53</span><span class="li__note">refuted · high</span></button>
+              <button class="li"><span class="dot dot--failed"></span><span class="li__id">:54</span><span class="li__note li__note--fail">error · tool limit</span></button>
+              <button class="li"><span class="dot dot--ended"></span><span class="li__id">:55</span><span class="li__note">not refuted · med</span></button>
+              <p class="split__group">verify:v1-quote-recordkeys · 4</p>
+              <button class="li"><span class="dot dot--ended"></span><span class="li__id">:42</span><span class="li__note">not refuted</span></button>
+              <button class="li"><span class="dot dot--ended"></span><span class="li__id">:43</span><span class="li__note">not refuted</span></button>
+              <button class="li"><span class="dot dot--working"></span><span class="li__id">:48</span><span class="li__note">running</span></button>
+              <button class="li"><span class="dot dot--working"></span><span class="li__id">:49</span><span class="li__note">running</span></button>
+              <p class="split__group">verify:v1-pricing-fallback · 2</p>
+              <button class="li"><span class="dot dot--ended"></span><span class="li__id">:56</span><span class="li__note">not refuted · med</span></button>
+              <button class="li"><span class="dot dot--failed"></span><span class="li__id">:57</span><span class="li__note li__note--fail">error · tool limit</span></button>
+              <p class="split__group">verify:worktree-drift · 3</p>
+              <button class="li li--on"><span class="dot dot--ended"></span><span class="li__id">:20</span><span class="li__note">not refuted · high</span></button>
+              <button class="li"><span class="dot dot--ended"></span><span class="li__id">:21</span><span class="li__note">not refuted · med</span></button>
+              <button class="li"><span class="dot dot--ended"></span><span class="li__id">:22</span><span class="li__note">refuted · low</span></button>
+              <p class="split__group">verify:compute-once-tooling · 1</p>
+              <button class="li"><span class="dot dot--ended"></span><span class="li__id">:12</span><span class="li__note">not refuted · high</span></button>
+              <p class="split__group">verify:v1-schema-config · 1</p>
+              <button class="li"><span class="dot dot--working"></span><span class="li__id">:31</span><span class="li__note">running</span></button>
+            </nav>
+            <div class="split__detail">
+              <div class="detail">
+                <div class="detail__head">
+                  <span class="dot dot--ended"></span>
+                  <span class="detail__name">verify:worktree-drift:20</span>
+                  <span class="detail__state">done</span>
+                </div>
+                <div class="stats">
+                  <span class="stat">model <b>sonnet-5</b></span>
+                  <span class="stat">ran <b>48s</b></span>
+                  <span class="stat">tools <b>4</b></span>
+                  <span class="stat">tokens <b>52.4k</b></span>
+                </div>
+
+                <div class="fields">
+                  <div class="field">
+                    <span class="field__label">Verdict</span>
+                    <span class="field__value"><span class="pill pill--good">not refuted</span></span>
+                  </div>
+                  <div class="field">
+                    <span class="field__label">Confidence</span>
+                    <span class="field__value"><span class="pill pill--high">high</span></span>
+                  </div>
+                  <div class="field field--wide">
+                    <span class="field__label">Reasoning</span>
+                    <span class="field__value">Re-ran the finder's query against the staging replica in read-only mode. <code>SELECT tier_id, merged_by FROM tier_merges</code> where <code>tier_id</code> starts with <code>tier:plan:</code> returns 101 rows, all with <code>merged_by = 'rule-gate-backfill'</code>. The claim holds: that pass is the sole writer on this table.</span>
+                  </div>
+                  <div class="field">
+                    <span class="field__label">Last tool</span>
+                    <span class="field__value"><code>StructuredOutput</code> verdict</span>
+                  </div>
+                </div>
+
+                <details class="block"><summary>prompt</summary><p class="block__body">You are verifying one claim adversarially. Try to refute it against the working tree.</p></details>
+                <details class="block"><summary>raw json · truncated by the run</summary><p class="block__body">{"refuted": false, "confidence": "high", "reasoning": "Re-ran the finder's query against the staging replica…</p></details>
+                <details class="block"><summary>4 tool calls</summary><p class="block__body">Only the last call is recorded for a workflow agent: StructuredOutput — verdict</p></details>
+
+                <div class="siblings">
+                  <div class="siblings__head">
+                    same task · 3 agents
+                    <span class="siblings__nav"><button class="siblings__btn" disabled>↑</button><button class="siblings__btn">↓</button></span>
+                  </div>
+                  <div class="compare">
+                    <button class="cmp cmp--on"><span class="cmp__id">:20 sonnet-5</span><span class="pill pill--good">not refuted</span><span class="cmp__note">high · 48s</span></button>
+                    <button class="cmp"><span class="cmp__id">:21 sonnet-5</span><span class="pill pill--good">not refuted</span><span class="cmp__note">med · 41s</span></button>
+                    <button class="cmp"><span class="cmp__id">:22 haiku-5</span><span class="pill pill--bad">refuted</span><span class="cmp__note">low · 39s</span></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>

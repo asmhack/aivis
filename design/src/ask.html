@@ -1,0 +1,106 @@
+<!-- @dsCard group="Session" name="Answer card" -->
+<!-- @styles: Answer card, Composer, Running tiles -->
+
+<p class="ds-note">Several questions behind tabs, a multi-select, and a permission prompt.</p>
+<p class="ds-sub">The card sits inside the composer rather than in the conversation, because a reader who jumped to a rail is parked half way up a long history and would never scroll past an inline card. Its left edge carries the colour the index counts the session under, so a session opened from the <b>asking you</b> queue is recognisably the row that was clicked. Nothing the model wrote is rendered as markup: an option's preview is shown as the text it is. A call carrying more than one question puts each behind a tab rather than stacking them, because a column of four questions gives the eye nothing to tell one from the next; the tick on each tab is what says how much is left.</p>
+
+<div class="ds-stack">
+  <div class="ds-frame">
+    <div class="composer">
+      <div class="composer__inner">
+        <div class="ask ask--question">
+          <p class="ask__banner">this session is asking you something · 3 more after this</p>
+          <div class="ask__tabs">
+            <button class="ask__tab ask__tab--on"><span class="ask__tick">1</span>Placement</button>
+            <button class="ask__tab ask__tab--done"><span class="ask__tick">✓</span>Rollout</button>
+            <button class="ask__tab"><span class="ask__tick">3</span>Fallback</button>
+            <button class="ask__tab"><span class="ask__tick">4</span>Telemetry</button>
+            <span class="ask__tally">1 of 4 answered</span>
+          </div>
+          <div class="ask__q">
+            <p class="ask__question">Where should the tier override live?</p>
+            <div class="ask__options">
+              <button class="ask__option ask__option--on">
+                <span class="ask__label">New “Tier override” tab</span>
+                <span class="ask__desc">A third tab beside the existing two, with the base tier and the override pickers side by side and the preview underneath. Deep-linkable.</span>
+                <pre class="ask__preview">┌── BASE TIER ─────┐   ┌── OVERRIDE ──────┐
+│ Standard         │ ⇄ │ Enterprise       │
+└──────────────────┘   └──────────────────┘</pre>
+              </button>
+              <button class="ask__option">
+                <span class="ask__label">Toolbar button + dialog</span>
+                <span class="ask__desc">Faster to reach from anywhere, but cramped and not linkable.</span>
+              </button>
+              <button class="ask__option">
+                <span class="ask__label">Both</span>
+              </button>
+            </div>
+            <input class="ask__own" placeholder="or answer in your own words" />
+          </div>
+          <div class="ask__acts">
+            <button class="ask__go">Answer 1 of 4</button>
+            <button class="ask__skip">Skip</button>
+          </div>
+        </div>
+        <div class="composer__row">
+          <textarea class="composer__input" rows="1" placeholder="Send a message to this session…"></textarea>
+          <button class="composer__send" disabled>send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ds-frame">
+    <div class="composer">
+      <div class="composer__inner">
+        <div class="ask ask--question">
+          <p class="ask__banner">this session is asking you something · 1 more after this</p>
+          <div class="ask__tabs">
+            <button class="ask__tab ask__tab--done"><span class="ask__tick">✓</span>Venue</button>
+            <button class="ask__tab ask__tab--on ask__tab--done"><span class="ask__tick">✓</span>Drinks</button>
+            <span class="ask__tally">2 of 2 answered</span>
+          </div>
+          <div class="ask__q">
+            <p class="ask__head">pick any</p>
+            <p class="ask__question">Which drinks should the picker offer?</p>
+            <div class="ask__options">
+              <button class="ask__option ask__option--on"><span class="ask__label">Tea</span></button>
+              <button class="ask__option ask__option--on"><span class="ask__label">Coffee</span></button>
+              <button class="ask__option"><span class="ask__label">Juice</span></button>
+            </div>
+            <input class="ask__own" placeholder="or answer in your own words" />
+          </div>
+          <div class="ask__acts">
+            <button class="ask__go">Answer 2 questions</button>
+            <button class="ask__skip">Skip</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ds-frame">
+    <div class="composer">
+      <div class="composer__inner">
+        <div class="ask ask--permission">
+          <p class="ask__banner">this session needs a decision</p>
+          <div class="ask__q">
+            <p class="ask__head">permission</p>
+            <p class="ask__question">
+              <span class="tool">Write</span> <span class="ask__subject">app/pricing/tier_resolver.py</span>
+            </p>
+            <pre class="ask__preview">{
+  "file_path": "app/pricing/tier_resolver.py",
+  "content": "…"
+}</pre>
+          </div>
+          <div class="ask__acts">
+            <button class="ask__go">Allow once</button>
+            <button class="ask__go">Allow, stop asking</button>
+            <button class="ask__no">Deny</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
