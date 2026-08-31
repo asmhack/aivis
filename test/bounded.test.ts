@@ -1,6 +1,20 @@
-import { test } from 'node:test'
+import { after, test } from 'node:test'
 import assert from 'node:assert/strict'
 import { forgetStalls, runBounded, withDeadline, type CommandOutput, type CommandRunner } from '../server/bounded.ts'
+
+/*
+ * Something referenced, for as long as this file runs.
+ *
+ * `runBounded` unrefs its abandon timer on purpose, so a command parked in the kernel can
+ * never be the reason aivis stays alive. The server always has a listening socket holding the
+ * loop open, so the timer fires there regardless. Here the wedged command is the only thing in
+ * flight, and an unreferenced timer is not enough to keep the loop from draining: Node decides
+ * there is nothing left to do, exits before the abandonment lands, and every test still waiting
+ * is reported as cancelled rather than failed. It survived on macOS by luck of timing and
+ * failed on Linux, which is where CI runs. One referenced interval stands in for the socket.
+ */
+const keepLoopAlive = setInterval(() => {}, 1_000)
+after(() => clearInterval(keepLoopAlive))
 
 /*
  * Every command the fleet refresh runs goes through here, and the case that matters is the one
