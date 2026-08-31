@@ -174,6 +174,17 @@ function textOf(content: unknown): string {
     .join('\n')
 }
 
+/**
+ * True when a message body carries a picture.
+ *
+ * A prompt that is a screenshot and nothing else reads as empty to `textOf`, and counting
+ * turns by text alone lost it: the message was sent, the session answered it, and the
+ * fleet reported one fewer prompt than the conversation actually held.
+ */
+function hasImage(content: unknown): boolean {
+  return blocksOf(content).some((b) => b.type === 'image')
+}
+
 function truncate(value: string, max: number): string {
   const clean = value.replace(/\s+/g, ' ').trim()
   return clean.length <= max ? clean : clean.slice(0, max - 1) + '…'
@@ -373,10 +384,12 @@ function applyRecord(acc: Accumulator, rec: TranscriptRecord): void {
     // the wrapper check belongs here too. Without it the machine's own housekeeping is
     // counted as a turn somebody took, and titles the session when the head of a sampled
     // transcript held no prompt of its own.
-    if (!text || isSynthetic(text)) return
+    if (isSynthetic(text) || (!text && !hasImage(rec.attachment.prompt))) return
     acc.userTurns += 1
     acc.lastShape = 'user-prompt'
-    if (!acc.title) acc.title = truncate(text, 120)
+    // A picture makes a prompt but not a title, so a session whose opening message was a
+    // screenshot keeps looking for words rather than titling itself with an empty string.
+    if (!acc.title && text) acc.title = truncate(text, 120)
     return
   }
 
