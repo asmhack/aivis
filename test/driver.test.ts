@@ -188,3 +188,76 @@ test('reaching the cap costs one pass over the line, not one per chunk', () => {
   // unresponsive for as long as it takes, so the bound is generous but not unbounded.
   assert.ok(Date.now() - started < 2000, 'the 64 MB cap is reached without stalling the loop')
 })
+
+/**
+ * What the queue count means, and what the state is read off.
+ *
+ * Claude Code does not answer one message per turn. A message that arrives while a turn is
+ * running is absorbed into that turn — the transcript records the removal as
+ * `absorbed_mid_turn` — and the turn reports a single `result` for everything it took in.
+ * A driver that subtracted one per result therefore drifted upward for good: three messages
+ * and one result left two permanently queued, and since the state was read off that count,
+ * the page reported a session as working hours after it had answered and gone quiet.
+ *
+ * So the count clears at the turn boundary, and the state gets a second source: output from
+ * a turn means a turn is running, which is the only sign of a message that was queued rather
+ * than absorbed and starts its own turn after the result of the one before it.
+ */
+
+test('messages absorbed into a turn already running leave nothing queued behind them', () => {
+  const { driver, inner } = fakeDriver()
+  driver.send('the first thing')
+  // Two more sent while that turn runs. Claude Code folds both into it rather than
+  // starting turns of their own, so all three are answered by one result.
+  driver.send('and another thought')
+  driver.send('and one more')
+  assert.equal(driver.status.queued, 3, 'all three are in flight while the turn runs')
+  assert.equal(driver.status.state, 'working')
+
+  inner.consume('{"type":"result","is_error":false}\n')
+
+  assert.equal(driver.status.queued, 0, 'the turn answered every one of them')
+  assert.equal(driver.status.state, 'idle', 'so the session reads as idle rather than busy')
+})
+
+test('a turn that starts on its own after a result puts the driver back to working', () => {
+  const { driver, inner } = fakeDriver()
+  driver.send('go')
+  inner.consume('{"type":"result","is_error":false}\n')
+  assert.equal(driver.status.state, 'idle')
+
+  // A message queued rather than absorbed runs once the turn before it reports, and no
+  // send marks the moment: the output it produces is the only sign there is.
+  inner.consume('{"type":"assistant","message":{"role":"assistant"}}\n')
+  assert.equal(driver.status.state, 'working', 'output means a turn is running')
+  assert.equal(driver.status.queued, 0, 'and says nothing about what is queued behind it')
+
+  inner.consume('{"type":"result","is_error":false}\n')
+  assert.equal(driver.status.state, 'idle', 'and its own result ends it')
+})
+
+test('the count the session itself reported through an interrupt outlives the turn it cut short', () => {
+  const { driver, inner } = fakeDriver()
+  driver.send('go')
+  assert.equal(driver.interrupt(), true)
+  // The session answers an interrupt with what survived it, which is better than any count
+  // kept here: those messages have not run yet and still have their turns coming.
+  inner.consume(
+    '{"type":"control_response","response":{"subtype":"success","request_id":"aivis-interrupt-1",' +
+      '"response":{"still_queued":[{"one":1},{"two":2}]}}}\n',
+  )
+  assert.equal(driver.status.queued, 2)
+
+  inner.consume('{"type":"result","is_error":true}\n')
+
+  assert.equal(driver.status.queued, 2, 'the interrupted turn does not clear what it never took in')
+  assert.equal(driver.status.state, 'working', 'because two turns are still to come')
+  assert.equal(driver.status.detail, 'stopped', 'and the error it ended on was the interrupt')
+})
+
+test('output that arrives after the child is gone does not bring the driver back to life', () => {
+  const { driver, inner } = fakeDriver()
+  inner.finish('exited', 'exit code 0')
+  inner.consume('{"type":"assistant","message":{"role":"assistant"}}\n')
+  assert.equal(driver.status.state, 'exited', 'a session that has ended stays ended')
+})

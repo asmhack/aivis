@@ -540,7 +540,11 @@ export interface DriverStatus {
   state: DriverState
   /** Reason the driver stopped or failed, when there is one. */
   detail: string | null
-  /** Messages accepted but not yet answered. */
+  /**
+   * Messages sent since the turn in progress began, which is what the page shows as
+   * queued. It clears when that turn reports its result, because a message absorbed into
+   * a turn already running is answered by it and never reports a result of its own.
+   */
   queued: number
   permissionMode: string
   /**
