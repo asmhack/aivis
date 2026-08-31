@@ -196,7 +196,7 @@ genuinely different, and picking the wrong one is how a change list lies:
 
 | Base | What it compares | Why you would pick it |
 | --- | --- | --- |
-| vs session start | The working tree against the last commit made before the session's first record | What this session amounts to. It keeps working after the session commits, which `HEAD` stops doing the moment it does |
+| vs session start | The working tree against the last commit made before the session's first record, minus the files that were already changed when it began | What this session amounts to. It keeps working after the session commits, which `HEAD` stops doing the moment it does |
 | uncommitted | The working tree against `HEAD` | What is still unstaged and unsaved, whoever wrote it |
 | this session's edits | Every `Write`, `Edit`, `MultiEdit`, and `NotebookEdit` in the loaded conversation, grouped by file | What this session itself typed, attributable to the tool call that did it — and the only base that needs no repository |
 
@@ -208,11 +208,19 @@ call wrote which line. A directory outside git is offered only the third, and sa
 Everything is scoped with `--relative`, so a session running in a subdirectory of a large
 repository reports its own corner of it rather than the whole tree.
 
-Four limits worth stating, because each one is a place the list could otherwise mislead:
+Five limits worth stating, because each one is a place the list could otherwise mislead:
 
 - Files git is not tracking yet are listed as added and counted by reading them, since
   `git diff` never mentions them. That read is capped at 400 files, and the summary says
   when the cap was hit.
+- A file that was already edited, or already sitting there untracked, when the session
+  began is left out of **vs session start**. The base commit alone cannot tell that work
+  apart from the session's own — both differ from it — and git records no time for a
+  working-tree edit, so the file's own mtime is the second anchor: anything last written
+  before the session's first record was not written by it. The summary line says how many
+  files that left out, and **uncommitted** still shows every one of them. A deleted file
+  has no mtime left to read and stays in the list, because dropping a deletion the session
+  made is the worse mistake.
 - The session's own base can only report `added` and `modified`. The file-editing tools
   never delete or rename, so a status it cannot know is one it does not claim; a file
   created is told apart from one overwritten by what the `Write` tool answered.

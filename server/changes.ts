@@ -32,6 +32,14 @@ const UNTRACKED_MAX_BYTES = 4 * 1024 * 1024
 const MAX_DIFF_LINES = 6000
 
 /**
+ * How long before the session's first record a file may have been written and still count
+ * as its work. Some filesystems keep mtimes to the whole second, so a file written a
+ * fraction of a second after the session began can carry a timestamp a fraction before it,
+ * and a rounding difference should not cost a file its place in the list.
+ */
+const MTIME_GRACE_MS = 2000
+
+/**
  * Run git in a directory.
  *
  * `git diff --no-index` exits 1 when the files differ, which is the normal case rather
@@ -187,30 +195,89 @@ function lineCount(text: string): number {
 }
 
 /**
+ * The moment before which a change cannot be this session's, or null when the base is not
+ * asking that question.
+ *
+ * `start` means "what did this session change", and the base commit only anchors half of
+ * that answer. A file left uncommitted or untracked days ago differs from that commit too,
+ * so without a second anchor the list reports work nobody did in this session — a fresh
+ * session in a repository with an untidy working tree opens on dozens of files at its first
+ * tool call. `head` means "what is uncommitted, whoever wrote it", which is a question
+ * about the tree rather than the session, so it takes no cutoff.
+ */
+function cutoff(base: 'start' | 'head', startedAt: string): number | null {
+  if (base !== 'start') return null
+  const at = Date.parse(startedAt)
+  return Number.isFinite(at) ? at - MTIME_GRACE_MS : null
+}
+
+/** True unless the file is still carrying an mtime from before the session started. */
+async function writtenSince(full: string, since: number): Promise<boolean> {
+  try {
+    const stat = await fs.stat(full)
+    return stat.mtimeMs >= since
+  } catch {
+    // Deleted, or unreadable: there is no mtime left to judge it by, and dropping a
+    // deletion the session made is the worse of the two mistakes.
+    return true
+  }
+}
+
+/**
+ * Tracked changes minus the ones that were already there when the session started.
+ *
+ * Nothing in git records when a working-tree edit happened — a commit has a date, an
+ * uncommitted edit does not — so the file's own mtime is the only witness, and a file last
+ * written before the session began cannot be its doing.
+ */
+async function changedSince(cwd: string, files: ChangedFile[], since: number): Promise<ChangedFile[]> {
+  const kept: ChangedFile[] = []
+  // Batched for the same reason the untracked read is: a rebase can leave hundreds of rows.
+  for (let start = 0; start < files.length; start += 32) {
+    const batch = files.slice(start, start + 32)
+    const recent = await Promise.all(
+      batch.map((file) => writtenSince(path.join(cwd, file.path), since)),
+    )
+    batch.forEach((file, at) => {
+      if (recent[at]) kept.push(file)
+    })
+  }
+  return kept
+}
+
+/**
  * Files git is not tracking yet.
  *
  * A file the session has just written is the most interesting row in the list and git's
  * own diff never mentions it, so it is listed here and its lines are counted by reading
  * it. `--exclude-standard` means `.gitignore` already keeps build output out.
+ *
+ * A `since` cutoff drops the files that were sitting there untracked before the session
+ * started, which are the ones this list gets wrong most often: they never age out of
+ * `git ls-files --others` the way an uncommitted edit ages out at the next commit.
  */
-async function untrackedFiles(cwd: string): Promise<{ files: ChangedFile[]; capped: boolean }> {
+async function untrackedFiles(
+  cwd: string,
+  since: number | null,
+): Promise<{ files: ChangedFile[]; capped: boolean; predating: number }> {
   let paths: string[] = []
   try {
     const out = await git(cwd, ['ls-files', '--others', '--exclude-standard', '-z'])
     paths = out.split('\0').filter((entry) => entry !== '')
   } catch {
-    return { files: [], capped: false }
+    return { files: [], capped: false, predating: 0 }
   }
 
   const capped = paths.length > MAX_UNTRACKED
   const wanted = paths.slice(0, MAX_UNTRACKED)
   const files: ChangedFile[] = []
+  let predating = 0
 
   // Batched so a directory of a few hundred new files does not open them all at once.
   for (let start = 0; start < wanted.length; start += 16) {
     const batch = wanted.slice(start, start + 16)
     const read = await Promise.all(
-      batch.map(async (rel): Promise<ChangedFile> => {
+      batch.map(async (rel): Promise<ChangedFile | null> => {
         const row: ChangedFile = {
           path: rel,
           status: 'added',
@@ -224,6 +291,9 @@ async function untrackedFiles(cwd: string): Promise<{ files: ChangedFile[]; capp
         try {
           const full = path.join(cwd, rel)
           const stat = await fs.stat(full)
+          // Older than the session, so it is not this session's file to claim — and not
+          // one worth spending a read on either.
+          if (since !== null && stat.mtimeMs < since) return null
           // A file too big to hold in memory still belongs in the list; only its count goes.
           if (stat.size > UNTRACKED_MAX_BYTES) return row
           const buffer = await fs.readFile(full)
@@ -234,10 +304,13 @@ async function untrackedFiles(cwd: string): Promise<{ files: ChangedFile[]; capp
         }
       }),
     )
-    files.push(...read)
+    for (const row of read) {
+      if (row === null) predating += 1
+      else files.push(row)
+    }
   }
 
-  return { files, capped }
+  return { files, capped, predating }
 }
 
 const EMPTY = (base: ChangeBase): ChangeSet => ({
@@ -250,6 +323,7 @@ const EMPTY = (base: ChangeBase): ChangeSet => ({
   baseFellBack: false,
   files: [],
   untrackedCapped: false,
+  predating: 0,
   error: null,
 })
 
@@ -286,8 +360,10 @@ async function readChanges(cwd: string, base: 'start' | 'head', startedAt: strin
   }
 
   const { meta, fellBack } = await baseFor(cwd, base, startedAt)
+  const since = cutoff(base, startedAt)
   const files: ChangedFile[] = []
   let error: string | null = null
+  let predating = 0
 
   if (meta) {
     try {
@@ -297,9 +373,10 @@ async function readChanges(cwd: string, base: 'start' | 'head', startedAt: strin
       ])
       const statuses = parseNameStatus(statusOut)
       const counts = parseNumstat(numstatOut)
+      const tracked: ChangedFile[] = []
       for (const [file, entry] of statuses) {
         const count = counts.get(file)
-        files.push({
+        tracked.push({
           path: file,
           status: entry.status,
           added: count?.added ?? 0,
@@ -310,13 +387,17 @@ async function readChanges(cwd: string, base: 'start' | 'head', startedAt: strin
           untracked: false,
         })
       }
+      const kept = since === null ? tracked : await changedSince(cwd, tracked, since)
+      predating += tracked.length - kept.length
+      files.push(...kept)
     } catch (err) {
       error = String(err)
     }
   }
 
-  const untracked = await untrackedFiles(cwd)
+  const untracked = await untrackedFiles(cwd, since)
   files.push(...untracked.files)
+  predating += untracked.predating
   files.sort((a, b) => churn(b) - churn(a) || a.path.localeCompare(b.path))
 
   return {
@@ -329,6 +410,7 @@ async function readChanges(cwd: string, base: 'start' | 'head', startedAt: strin
     baseFellBack: fellBack,
     files,
     untrackedCapped: untracked.capped,
+    predating,
     error,
   }
 }

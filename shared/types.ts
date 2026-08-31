@@ -707,6 +707,12 @@ export interface ChangeSet {
   files: ChangedFile[]
   /** Files git left uncounted because the untracked list was cut short. */
   untrackedCapped: boolean
+  /**
+   * Files that differ from the base but were last written before the session began, so
+   * `start` leaves them out: they are somebody else's uncommitted work, not this
+   * session's. Always 0 for `head`, which is asking about the tree rather than the session.
+   */
+  predating: number
   error: string | null
 }
 
