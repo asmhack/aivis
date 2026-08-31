@@ -575,6 +575,14 @@ stores them inline as base64, and a single screenshot would otherwise dominate e
 of the conversation, so each is referenced by record and fetched from
 `/api/sessions/<id>/image`. Selecting one opens it full size.
 
+A message can be a picture and no words at all, and one sent while the session is working
+is filed under an attachment rather than as a user turn — two different records, both of
+which used to be read for their text and dropped when there was none. A screenshot pasted
+mid-turn therefore vanished from the page that sent it and went uncounted in the prompt
+tally, while the session answered it perfectly well. Both readers now keep a message that
+has a picture, wherever the record put it, and the prompt list marks a wordless one
+`(image)` rather than drawing an empty row.
+
 A session already running in a terminal is written to directly, over its own socket. Every
 top-level Claude Code session listens on `/tmp/cc-socks/<pid>.sock` and accepts a `user`
 message frame — the transport behind Claude Code's own cross-session messaging. So a

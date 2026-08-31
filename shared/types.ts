@@ -299,6 +299,12 @@ export type TranscriptEntry =
       uuid: string
       at: string
       text: string
+      /**
+       * Pictures sent with the message, referenced rather than inlined — the same shape a
+       * user turn carries them in, because a message pushed into a session can be a
+       * screenshot with no words at all.
+       */
+      images: EntryImage[]
       /** Who the session recorded as the sender. `aivis` for anything the composer sent. */
       from: string
       /** The id the sender generated, which is how the composer recognises its own message. */

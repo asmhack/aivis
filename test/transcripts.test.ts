@@ -459,6 +459,15 @@ test('a message pushed in over the socket counts as a user turn and can supply t
   // An empty push is not a turn at all.
   const empty = await fold([userPrompt('Start here.', { at: ago(120_000) }), queuedCommand('   ', ago(60_000))])
   assert.equal(empty.userTurns, 1)
+
+  // A push with no words but a picture is, though. The composer sends a pasted screenshot
+  // with an empty body, so counting turns by text alone lost the message entirely.
+  const wordless = await fold([
+    userPrompt('Start here.', { at: ago(120_000) }),
+    queuedCommand([{ type: 'image', source: { type: 'base64', data: 'aVZC' } }], ago(60_000)),
+  ])
+  assert.equal(wordless.userTurns, 2, 'a screenshot with no caption is a message all the same')
+  assert.equal(wordless.title, 'Start here.', 'but it has no words to title a session with')
 })
 
 test('a summary record titles a session only when no prompt was ever typed', async () => {

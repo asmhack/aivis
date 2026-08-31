@@ -8,6 +8,7 @@ import type {
   ChangeBase,
   ChangeSet,
   DriverStatus,
+  EntryImage,
   PendingAsk,
   Session,
   Subagent,
@@ -1108,10 +1109,42 @@ function PromptList({
               ) : null}
               <span className="promptrow__time">{clock(entry.at)}</span>
             </span>
-            <span className="promptrow__text">{text || '(no text)'}</span>
+            <span className="promptrow__text">
+              {text || (entry.images.length > 0 ? '(image)' : '(no text)')}
+            </span>
           </button>
         )
       })}
+    </div>
+  )
+}
+
+/**
+ * The pictures sent with a message, each linking to a full-size copy of itself.
+ *
+ * The bytes are fetched per image rather than carried in the conversation, which is what
+ * keeps a page of it small enough to send when it holds a dozen screenshots. Two kinds of
+ * entry draw them: a message you typed here, and one pushed into the session from outside.
+ */
+function Attached({
+  sessionId,
+  uuid,
+  images,
+}: {
+  sessionId: string
+  uuid: string
+  images: EntryImage[]
+}): React.JSX.Element | null {
+  if (images.length === 0) return null
+  const at = (index: number): string =>
+    `/api/sessions/${encodeURIComponent(sessionId)}/image?uuid=${encodeURIComponent(uuid)}&index=${index}`
+  return (
+    <div className="entry__images">
+      {images.map((image) => (
+        <a key={image.index} href={at(image.index)} target="_blank" rel="noreferrer noopener">
+          <img className="entry__image" alt="attached image" src={at(image.index)} />
+        </a>
+      ))}
     </div>
   )
 }
@@ -2157,7 +2190,10 @@ function Entry({
         <div className="entry__gutter" title={`pushed into the session by ${entry.from}`}>
           {mine ? 'aivis' : entry.from}
         </div>
-        <div className="entry__body">{entry.text}</div>
+        <div className="entry__body">
+          <Attached sessionId={sessionId} uuid={entry.uuid} images={entry.images} />
+          {entry.text}
+        </div>
       </div>
     )
   }
@@ -2167,24 +2203,7 @@ function Entry({
       <div className="entry entry--user" id={`entry-${entry.uuid}`}>
         <div className="entry__gutter">you</div>
         <div className="entry__body">
-          {entry.images.length > 0 ? (
-            <div className="entry__images">
-              {entry.images.map((image) => (
-                <a
-                  key={image.index}
-                  href={`/api/sessions/${encodeURIComponent(sessionId)}/image?uuid=${encodeURIComponent(entry.uuid)}&index=${image.index}`}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                >
-                  <img
-                    className="entry__image"
-                    alt="attached image"
-                    src={`/api/sessions/${encodeURIComponent(sessionId)}/image?uuid=${encodeURIComponent(entry.uuid)}&index=${image.index}`}
-                  />
-                </a>
-              ))}
-            </div>
-          ) : null}
+          <Attached sessionId={sessionId} uuid={entry.uuid} images={entry.images} />
           {entry.text}
         </div>
       </div>

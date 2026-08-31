@@ -17,7 +17,7 @@ import assert from 'node:assert/strict'
 import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { readImage, transcriptMentions } from '../server/transcriptView.ts'
+import { readImage, readTranscript, transcriptMentions } from '../server/transcriptView.ts'
 
 const tempDirs: string[] = []
 
@@ -51,6 +51,31 @@ function imageRecord(uuid: string): string {
           source: { type: 'base64', media_type: 'image/png', data: PIXEL.toString('base64') },
         },
       ],
+    },
+  })
+}
+
+/**
+ * A message pushed into a session, carrying a screenshot and not one word.
+ *
+ * This is the record Claude Code writes for a message it took while a turn was already
+ * running, and it keeps the blocks under the attachment rather than in a message of its
+ * own — so both the conversation reader and the image reader have to look there.
+ */
+function pushedImageRecord(uuid: string): string {
+  return JSON.stringify({
+    type: 'attachment',
+    uuid,
+    timestamp: new Date().toISOString(),
+    attachment: {
+      type: 'queued_command',
+      prompt: [
+        {
+          type: 'image',
+          source: { type: 'base64', media_type: 'image/png', data: PIXEL.toString('base64') },
+        },
+      ],
+      origin: { from: 'aivis' },
     },
   })
 }
@@ -129,4 +154,55 @@ test('a burst of scans all finish, and one that throws still hands its slot on',
     Array.from({ length: 8 }, () => readImage(file, UUID, 1, WHOLE_FILE)),
   )
   assert.ok(images.every((image) => image?.bytes.toString() === PIXEL.toString()))
+})
+
+/*
+ * A message that is a picture and nothing else.
+ *
+ * Both readers here used to ask a pushed message for its text and drop it when there was
+ * none, which is the shape a pasted screenshot takes: the composer sends the image with an
+ * empty body. The message was delivered, the session answered it, and the page that sent it
+ * showed nothing at all — and since the image lives under the attachment rather than in a
+ * message, finding the entry is only half of it.
+ */
+
+test('a pushed message carrying only a picture stays in the conversation', async () => {
+  const file = await newTranscript(`${pushedImageRecord(UUID)}\n`)
+
+  const page = await readTranscript(file, 'sess-abc', 500)
+  const entry = page.entries.find((row) => row.kind === 'queued')
+
+  assert.ok(entry, 'a message with no words is still a message')
+  assert.equal(entry.kind === 'queued' ? entry.text : null, '')
+  assert.deepEqual(
+    entry.kind === 'queued' ? entry.images : null,
+    [{ index: 0, mediaType: 'image/png' }],
+    'and the picture is what there is to show of it',
+  )
+})
+
+test('the picture on a pushed message is read from the attachment that holds it', async () => {
+  const file = await newTranscript(`${pushedImageRecord(UUID)}\n`)
+
+  const image = await readImage(file, UUID, 0, WHOLE_FILE)
+
+  assert.equal(image?.mediaType, 'image/png')
+  assert.deepEqual(image?.bytes, PIXEL, 'the bytes come back whole, from wherever the record kept them')
+})
+
+test('a notification that arrives on the same channel is still not a message', async () => {
+  const notice = JSON.stringify({
+    type: 'attachment',
+    uuid: 'b8e04d71-0000-4000-8000-00000000000f',
+    timestamp: new Date().toISOString(),
+    attachment: {
+      type: 'queued_command',
+      prompt: '<task-notification>\n<tool-use-id>toolu_1</tool-use-id>\n</task-notification>',
+    },
+  })
+  const file = await newTranscript(`${notice}\n`)
+
+  const page = await readTranscript(file, 'sess-abc', 500)
+
+  assert.deepEqual(page.entries, [], 'the machine talking to itself is not somebody typing')
 })

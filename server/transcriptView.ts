@@ -73,6 +73,21 @@ function promptText(prompt: unknown): string {
 }
 
 /**
+ * The images in a message body, referenced by position rather than inlined.
+ *
+ * The index is the block's place in the record's own content array, not its place among
+ * the images, because that is what `readImage` looks the bytes up by: a message whose
+ * picture came before its text is the ordinary shape, since a screenshot is usually the
+ * subject the words refer to.
+ */
+function imagesIn(content: unknown): EntryImage[] {
+  return blocks(content)
+    .map((block, index) => ({ block, index }))
+    .filter(({ block }) => block.type === 'image' && block.source?.data)
+    .map(({ block, index }) => ({ index, mediaType: block.source?.media_type ?? 'image/png' }))
+}
+
+/**
  * Read a session's whole conversation.
  *
  * This used to read only the last few megabytes, which was the wrong measure entirely: a
@@ -189,14 +204,20 @@ async function readWholeTranscript(
 
     if (rec.type === 'attachment' && rec.attachment?.type === 'queued_command') {
       const text = promptText(rec.attachment.prompt).trim()
+      // A message can be a picture and nothing else — a screenshot pasted into the composer
+      // with no words — and this record is where one lands whenever the session took it
+      // mid-turn. Reading only the text dropped it from the very page that sent it.
+      const images = imagesIn(rec.attachment.prompt)
       // Same reason as the user branch below: a task notification arrives here too, and a
-      // notification is not a message anybody sent.
-      if (!text || isSynthetic(text)) continue
+      // notification is not a message anybody sent. It never carries a picture, so the
+      // filter still reads the text.
+      if (isSynthetic(text) || (!text && images.length === 0)) continue
       entries.push({
         kind: 'queued',
         uuid,
         at,
         text,
+        images,
         from: rec.attachment.origin?.from ?? 'unknown',
         sourceUuid: rec.attachment.source_uuid ?? null,
       })
@@ -277,10 +298,7 @@ async function readWholeTranscript(
       }
       // Images are referenced by position rather than inlined, so a page of the
       // conversation stays small enough to send even when it carries screenshots.
-      const images: EntryImage[] = parts
-        .map((block, index) => ({ block, index }))
-        .filter(({ block }) => block.type === 'image' && block.source?.data)
-        .map(({ block, index }) => ({ index, mediaType: block.source?.media_type ?? 'image/png' }))
+      const images = imagesIn(content)
       if (rec.isMeta || sidechain) continue
       if (!body.trim() && images.length === 0) continue
       if (isSynthetic(body)) continue
@@ -518,7 +536,9 @@ export async function readImage(
         continue
       }
       if (rec.uuid !== uuid) continue
-      const block = blocks(rec.message?.content)[index]
+      // A message pushed into a session keeps its blocks under the attachment rather than
+      // in a message of its own, and the picture sent with one is stored there too.
+      const block = blocks(rec.message?.content)[index] ?? blocks(rec.attachment?.prompt)[index]
       const data = block?.source?.data
       if (!data) return null
       return {
