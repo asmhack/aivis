@@ -248,6 +248,16 @@ export class SessionDriver {
   private killTimer: ReturnType<typeof setTimeout> | null = null
   private stateValue: DriverState = 'starting'
   private detail: string | null = null
+  /**
+   * Messages sent since the last turn boundary, which is what the page shows as queued.
+   *
+   * Deliberately not a running tally of sends minus results: Claude Code absorbs a message
+   * that arrives mid-turn into the turn already running rather than starting a second one
+   * for it — the transcript records the removal as `absorbed_mid_turn` — so three messages
+   * can be answered by a single `result`. Counting one result per message left this stuck
+   * above zero for the rest of the session, and with it a driver reporting `working` at a
+   * session that had been idle for hours.
+   */
   private pending = 0
   private readonly permissionMode: string
   /** Control requests are correlated by id, so each interrupt needs its own. */
@@ -648,6 +658,14 @@ export class SessionDriver {
         this.stopping = true
         continue
       }
+      // An assistant message means a turn is producing output, whatever the count says.
+      // Only this type: it is the one that cannot arrive outside a turn, since a turn's
+      // result is emitted after the last of them, and the tool results on the same stream
+      // never arrive without one of these in front of them.
+      if (event.type === 'assistant') {
+        this.markWorking()
+        continue
+      }
       if (event.type === 'system' && event.subtype === 'init') {
         if (!this.sessionId && event.session_id) {
           this.sessionId = event.session_id
@@ -667,7 +685,13 @@ export class SessionDriver {
           this.stopping = false
           this.detail = 'stopped'
         } else {
-          this.pending = Math.max(0, this.pending - 1)
+          // A result ends the turn and everything the turn took in with it, which is why
+          // this clears rather than decrements. A message absorbed mid-turn is answered by
+          // the turn that absorbed it and reports no result of its own, so subtracting one
+          // per result would leave the count — and the state read off it — stuck above
+          // zero. A message that was queued rather than absorbed runs next and says so
+          // itself, through `markWorking`.
+          this.pending = 0
           this.detail = event.is_error === true ? 'last turn ended with an error' : null
         }
         this.setState(this.pending > 0 ? 'working' : 'idle')
@@ -719,6 +743,21 @@ export class SessionDriver {
     }, OVERFLOW_KILL_MS)
     // Unref'd: a child on its way out must not hold the daemon open behind it.
     this.killTimer.unref()
+  }
+
+  /**
+   * Note that a turn is running, without touching the queue count.
+   *
+   * The count says how many messages went into a turn; this says a turn exists at all, and
+   * they are not the same fact. A message that was queued rather than absorbed starts its
+   * own turn once the turn it was queued behind reports its result, and no `send` marks
+   * that moment — the output it produces is the only sign of it. Nothing is published when
+   * the state is already `working`, because a turn making thirty tool calls would otherwise
+   * broadcast thirty identical statuses to every open page.
+   */
+  private markWorking(): void {
+    if (!this.alive || this.stateValue === 'working') return
+    this.setState('working')
   }
 
   private setState(next: DriverState): void {

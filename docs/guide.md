@@ -242,6 +242,12 @@ The input grows as you write, from one line up to two fifths of the window — c
 more than fifteen lines at a usual size — and scrolls past that. A long message is worth
 being able to reread before sending it, which a fixed two-line slot made impossible.
 
+A message sent while the session is working joins the turn already in progress rather than
+queueing behind it: Claude Code absorbs it, and the answer comes back inside that same turn.
+So the count beside the working indicator is the messages this turn took in, and it clears
+when the turn reports — an absorbed message never reports a result of its own, and a count
+waiting for one would never come back down.
+
 ## Reference a file
 
 Type `@` in the composer to open a file picker for the session's working directory.
