@@ -325,11 +325,7 @@ function FileList({
 
       {shown.length === 0 ? (
         <p className="note">
-          {rows.length === 0
-            ? base === 'session'
-              ? 'This session has not edited a file yet.'
-              : 'Nothing differs from the base.'
-            : 'No file matches that filter.'}
+          {rows.length > 0 ? 'No file matches that filter.' : emptyNote(base, changes)}
         </p>
       ) : null}
 
@@ -422,6 +418,25 @@ function FileDock({
   )
 }
 
+/**
+ * What an empty list says, which is three different things.
+ *
+ * The third is the one worth spelling out. A `start` list can come back empty in a tree
+ * that is visibly dirty, because the files that differ from the base were all written
+ * before the session began — so the sentence says where they went rather than leaving the
+ * list looking broken.
+ */
+function emptyNote(base: ChangeBase, changes: ChangeSet | null): string {
+  if (base === 'session') return 'This session has not edited a file yet.'
+  const older = base === 'start' ? (changes?.predating ?? 0) : 0
+  if (older === 0) return 'Nothing differs from the base.'
+  const differ = older === 1 ? '1 file differs' : `${older} files differ`
+  return (
+    `Nothing has changed since this session started. ${differ} from the base, ` +
+    `last written before it began — switch to uncommitted to see ${older === 1 ? 'it' : 'them'}.`
+  )
+}
+
 /** The one line that says exactly what "changed" is being measured against. */
 function BaseNote({
   base,
@@ -456,6 +471,9 @@ function BaseNote({
       {changes.branch ? ` · ${changes.branch}` : ''}
       {changes.baseFellBack
         ? ' · no commit predates this session, so this is the uncommitted work'
+        : ''}
+      {changes.predating > 0
+        ? ` · ${changes.predating} older ${changes.predating === 1 ? 'file' : 'files'} left out`
         : ''}
       {changes.untrackedCapped ? ' · too many new files to list them all' : ''}
     </p>
