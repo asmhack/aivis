@@ -22,6 +22,7 @@ import { branchState, browse, checkoutBranch, ensureDir, resolveDir, trustProjec
 import { defaults } from './defaults.ts'
 import { deliverToSession } from './deliver.ts'
 import { LOCAL_NAMES, readsAsJson, sameOrigin } from './origin.ts'
+import { clientBuildId, compareBuild } from './build.ts'
 import type { AskDecision, OutgoingImage, PendingAsk, ServerMessage } from '../shared/types.ts'
 
 const clients = new Set<WebSocket>()
@@ -35,6 +36,16 @@ export const drivers = new DriverRegistry((status) => broadcast({ kind: 'driver'
 // running a scan of the whole store.
 export const fleet = new Fleet((sessionId) => (drivers.get(sessionId)?.status.asks.length ?? 0) > 0)
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+const distDir = path.join(rootDir, 'dist')
+
+/**
+ * The front end this process started with, read once at start-up.
+ *
+ * Taken here rather than on the first request so that it is genuinely the build the server
+ * booted with: a rebuild that lands before anybody opens the page would otherwise be
+ * recorded as this process's own, and the disagreement it causes would go unreported.
+ */
+const bootedWith = clientBuildId(distDir)
 
 /** How often each connected page is pinged to find out whether it is still there. */
 const HEARTBEAT_MS = 30_000
@@ -296,7 +307,6 @@ const STATIC_TYPES: Record<string, string> = {
 
 async function serveStatic(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
   if (!config.serveStatic) return false
-  const distDir = path.join(rootDir, 'dist')
   const requested = (req.url ?? '/').split('?')[0] ?? '/'
   const candidate = path.join(distDir, requested === '/' ? 'index.html' : requested)
   const resolved = path.resolve(candidate)
@@ -375,6 +385,15 @@ export async function handleRequest(req: IncomingMessage, res: ServerResponse): 
 
   if (url.pathname === '/api/health') {
     json(res, 200, { ok: true, projectsDir: config.projectsDir, sessions: fleet.all().length })
+    return
+  }
+
+  // Whether the page asking is newer than the server answering it. A server that predates
+  // this route answers the static fallthrough below instead, which hands back `index.html`
+  // — so the page reads a reply that is not the JSON it asked for as the same disagreement
+  // by another name, and that is the reply the servers this exists for actually give.
+  if (url.pathname === '/api/build') {
+    json(res, 200, compareBuild(config.serveStatic, await bootedWith, await clientBuildId(distDir)))
     return
   }
 
