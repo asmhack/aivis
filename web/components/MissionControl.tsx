@@ -673,11 +673,10 @@ function copyFor(item: AttentionItem): {
  * for the same reason — the click puts that sentence in the toast, for anyone who does not
  * think to hover.
  *
- * `test` is beside it because of the one thing this feature cannot do, which is tell whether
- * a banner it raised was ever drawn. The browser reports that it showed it even when there is
- * no screen to show it on, so a reader who sees nothing has no way to know whether aivis
- * stayed silent or their operating system swallowed it — and the wait for the next real one
- * is unbounded, which made every failure look like patience. One click settles it.
+ * The tooltip carries a count of banners raised, because that is the one part of the chain
+ * aivis can honestly report: everything past the call belongs to the browser and the operating
+ * system, and neither says whether the banner was ever drawn. A count that climbs while the
+ * screen stays empty says where to look.
  */
 function NotifyToggle({
   notifier,
@@ -694,26 +693,15 @@ function NotifyToggle({
         ? `On: a system notification when a session asks you something or finishes its turn, and nothing while you are already looking at the session it would be about. This tab has to stay open for them to arrive. ${notifier.raised} raised since this page loaded. Click to turn off.`
         : 'Get a system notification when a session asks you something or finishes its turn, so you hear about it from another window. This tab has to stay open for them to arrive. The count on this tab works either way.'
   return (
-    <>
-      <button
-        className={`linkish notify ${notifier.enabled ? 'notify--on' : ''}`}
-        onClick={() => void notifier.toggle().then(onSay)}
-        title={hint}
-        aria-pressed={notifier.enabled}
-        aria-disabled={!notifier.supported}
-      >
-        {notifier.enabled ? 'notifications on' : 'notify me'}
-      </button>
-      {notifier.enabled ? (
-        <button
-          className="linkish"
-          onClick={() => onSay(notifier.test())}
-          title="Raise one now. If nothing appears on screen or in Notification Center, the browser accepted it and your operating system dropped it — check System Settings › Notifications › your browser, and whether a Focus mode is on."
-        >
-          test
-        </button>
-      ) : null}
-    </>
+    <button
+      className={`linkish notify ${notifier.enabled ? 'notify--on' : ''}`}
+      onClick={() => void notifier.toggle().then(onSay)}
+      title={hint}
+      aria-pressed={notifier.enabled}
+      aria-disabled={!notifier.supported}
+    >
+      {notifier.enabled ? 'notifications on' : 'notify me'}
+    </button>
   )
 }
 

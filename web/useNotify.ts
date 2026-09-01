@@ -28,9 +28,9 @@ import {
  * One thing it deliberately does not claim to know is whether a banner was ever drawn. The
  * browser reports that it showed one even where there is no screen to show it on, so a system
  * configured to give the browser no banner produces silence that is indistinguishable, from
- * here, from code that never ran. That is why `raised` is counted and reported, why `test`
- * exists, and why the count on the tab (`useBadge.ts`) is the signal this feature actually
- * rests on rather than a decoration on top of it.
+ * here, from code that never ran. That is why `raised` is counted and reported, why switching
+ * the feature on raises a banner then and there, and why the count on the tab (`useBadge.ts`)
+ * is the signal this feature actually rests on rather than a decoration on top of it.
  */
 
 /** Where the choice is remembered, so a reload does not silently turn banners back off. */
@@ -47,11 +47,11 @@ const PREF_KEY = 'aivis.notify'
 const MEMORY_KEY = 'aivis.notified'
 
 /**
- * The banner sent when notifications are switched on, and again by the test button.
+ * The banner sent the moment notifications are switched on.
  *
- * One notice for both, because they are the same errand: show the reader, right now, what a
- * banner from aivis looks like, so that a screen which stays empty is a fact about their
- * system rather than a question about this feature.
+ * It shows the reader, right then, what a banner from aivis looks like, so that a screen which
+ * stays empty is a fact about their system rather than a question about this feature. Without
+ * it the next banner may be an hour away, and every failure looks like patience.
  *
  * The tag counts, for the reason given on `Notice.tag`: a fixed one meant the second greeting
  * silently replaced the first, so switching notifications off and on again to check whether
@@ -94,12 +94,6 @@ export interface Notifier {
   raised: number
   /** Flip it, returning the line to show you about what happened. */
   toggle: () => Promise<string>
-  /**
-   * Raise one now, so the path can be checked without waiting for a session to need you.
-   *
-   * The wait for a real one is unbounded, which made every failure look the same as patience.
-   */
-  test: () => string
 }
 
 /**
@@ -230,15 +224,6 @@ export function useNotify(
     return 'notifications on'
   }, [supported, wanted, want, raise])
 
-  const test = useCallback((): string => {
-    if (!supported) return 'this browser has no notifications to test'
-    if (Notification.permission !== 'granted') return 'notifications are not switched on'
-    raise(hello(count.current))
-    // Deliberately not "sent". aivis knows only that the browser accepted it, and the whole
-    // reason this button exists is that the two are not the same thing.
-    return 'notification raised — if nothing appeared, your system is suppressing it'
-  }, [supported, raise])
-
   // Kept in a ref so that changing how a click is handled does not re-run the effect below
   // and re-arm it, which would swallow whatever arrived in between.
   const open = useRef(onOpen)
@@ -286,5 +271,5 @@ export function useNotify(
     }
   }, [enabled, loaded, items, openSessionId, raise])
 
-  return { supported, enabled, permission, raised, toggle, test }
+  return { supported, enabled, permission, raised, toggle }
 }

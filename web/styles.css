@@ -16,6 +16,14 @@
    * nobody can read.
    */
   --notify: #f0b27a;
+  /*
+   * The same switch once it is on. A different colour rather than a filled version of the
+   * same one, because the two states are asking for opposite things: the off position is
+   * trying to be found, which is what the warmth is for, and the on position only has to
+   * report that it is handled. Pale blue reads as settled where more orange would go on
+   * pressing.
+   */
+  --notify-on: #a8c7e8;
   --working: #3fb950;
   --stalled: #d29922;
   --idle: #6e94c4;
@@ -45,6 +53,7 @@
     --text-faint: #818b98;
     --accent: #0969da;
     --notify: #b45309;
+    --notify-on: #356a9e;
     --working: #1a7f37;
     --stalled: #9a6700;
     --idle: #4a72a8;
@@ -2231,8 +2240,10 @@ body {
  * and this is the one that has to be found before it can do anything. Hence the warm
  * outline, which is the only colour in a section header.
  *
- * The on position fills the pill instead of changing its colour, so "will this interrupt
- * me" is answerable from the shape without reading the label.
+ * The on position changes colour as well as filling the pill, so the two states are told
+ * apart at a glance and without reading the label. They are not the same kind of thing: off
+ * is asking to be found, which is what the warmth is for, while on is only reporting that it
+ * is handled, which is a quieter job and gets a quieter colour.
  *
  * Marked unavailable, the browser has no notifications to offer at all — on a page served
  * over plain http to a LAN address it will not — so it drops back to grey rather than
@@ -2250,8 +2261,14 @@ body {
   background: color-mix(in srgb, var(--notify) 10%, transparent);
 }
 .notify--on {
-  background: color-mix(in srgb, var(--notify) 16%, transparent);
-  border-color: color-mix(in srgb, var(--notify) 55%, transparent);
+  color: var(--notify-on);
+  background: color-mix(in srgb, var(--notify-on) 16%, transparent);
+  border-color: color-mix(in srgb, var(--notify-on) 55%, transparent);
+}
+.notify--on:hover {
+  color: var(--notify-on);
+  border-color: var(--notify-on);
+  background: color-mix(in srgb, var(--notify-on) 22%, transparent);
 }
 .notify[aria-disabled='true'] {
   color: var(--text-faint);

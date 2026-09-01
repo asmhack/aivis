@@ -174,21 +174,20 @@ will discard a background tab under memory pressure and reload it when you next 
 ### When no banner appears
 
 aivis cannot tell whether your operating system drew a banner it raised. The browser reports
-that it showed one even when there is no screen to show it on, so there is no answer to be had
-by asking. This is why the tab count exists, and why the switch keeps a count of its own: the
-tooltip says how many banners have been raised since the page loaded, and **test** beside it
-raises one on demand rather than making you wait for a session.
+that it showed one even where there is no screen to show it on, so there is no answer to be had
+by asking. Two things stand in for the answer instead: the tab count, which never depended on
+the operating system in the first place, and the banner raised the moment you switch the
+feature on — if that one does not appear, none of the later ones will either, and the switch's
+tooltip says how many have been raised since the page loaded, so a count that climbs against an
+empty screen says where the problem is not.
 
-If **test** produces nothing on screen and nothing in Notification Center, the browser
-accepted it and your operating system threw it away. On macOS the usual cause is that the
-browser itself is not allowed to notify:
+When the browser accepted a banner and nothing appeared, the cause is downstream of both the
+page and the browser. On macOS, in the order worth checking:
 
-1. **System Settings › Notifications › Google Chrome** — turn on *Allow notifications*, and
-   set the alert style to *Banners* or *Alerts*. With it off, macOS accepts each notification
-   and then files it nowhere: no banner, no sound, and no Notification Center entry either, so
-   an empty Notification Center is the expected symptom rather than a separate fault. Chrome
-   registers a second row, *Google Chrome Helper (Alerts)*; enabling that one too costs
-   nothing and covers alert-style notifications.
+1. **System Settings › Notifications › your browser** — *Allow notifications* on, and the alert
+   style set to *Banners* or *Alerts* rather than *None*. A browser that is not allowed to
+   present notifications still accepts every one it is given, so this fails completely
+   silently, and it fails for every website at once rather than for aivis in particular.
 2. **A Focus mode**, which suppresses banners per application.
 3. **Screen sharing or mirroring**, which macOS treats as its own reason to go quiet — see
    *Show notifications when mirroring or sharing the display* in the same settings pane.
