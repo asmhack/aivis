@@ -3,15 +3,11 @@ import { promises as fs } from 'node:fs'
 import net from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
+import { socketFor } from './registry.ts'
 import type { OutgoingImage } from '../shared/types.ts'
 
 const ATTACHMENT_DIR = path.join(os.tmpdir(), 'aivis-attachments')
 const ATTACHMENT_TTL_MS = 24 * 3600_000
-
-/** Where a session's inbound message socket lives, keyed by its process id. */
-function socketPath(pid: number): string {
-  return path.join('/tmp/cc-socks', `${pid}.sock`)
-}
 
 /**
  * When the receiving session should take the message up.
@@ -26,9 +22,10 @@ export type DeliveryPriority = 'now' | 'next' | 'later'
 export interface DeliveryOptions {
   /**
    * The session the message is meant for. The receiver drops any frame whose `session_id`
-   * does not match its own, which is the only defence against aivis's pid attribution
-   * being wrong — a transcript records a working directory but never the process id that
-   * writes it, so a directory with several sessions in it is guesswork. Set
+   * does not match its own, which is what makes a wrong pid a message that fails to arrive
+   * rather than one that lands in someone else's conversation. Since the pid now comes from
+   * the client's own record where there is one — `server/registry.ts` — this is the backstop
+   * for the case where there is not, and the reason that case is safe to guess in. Set
    * `AIVIS_SOCKET_SESSION_GUARD=0` to send without the check.
    */
   sessionId?: string
@@ -214,7 +211,8 @@ export async function deliverToSession(
   options: DeliveryOptions = {},
 ): Promise<DeliveryOutcome> {
   const uuid = randomUUID()
-  const sock = socketPath(pid)
+  // The path the session recorded for itself, which is not always the one this would derive.
+  const sock = await socketFor(pid)
   try {
     await fs.access(sock)
   } catch {

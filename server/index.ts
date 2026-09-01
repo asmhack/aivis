@@ -15,6 +15,7 @@ import { clearBash, finishedBash, forgetBash, pendingBash, startBashLine, stopBa
 import { bashStderr, formatBashPrefix, pendingEntryUuid } from '../shared/bash.ts'
 import { searchCommands, expandCommand } from './commands.ts'
 import { parked } from './parked.ts'
+import { registeredSessions } from './registry.ts'
 import { ambiguityFor, endSession } from './terminate.ts'
 import { blockUsage } from './blocks.ts'
 import { attentionQueue } from './attention.ts'
@@ -1057,12 +1058,17 @@ export async function handleRequest(req: IncomingMessage, res: ServerResponse): 
       return
     }
 
-    // Which process writes which transcript is not recorded anywhere, so a directory with
-    // more than one live session cannot be ended on a guess without saying so first.
+    // A directory with more than one live session in it cannot be ended on a guess without
+    // saying so first — but the attribution is only a guess where the client did not record
+    // one. Asked again here rather than read off the session, so what is about to be
+    // signalled is checked against the record as it stands now rather than as the last scan
+    // left it.
+    const recorded = (await registeredSessions(await fleet.processes())).get(session.id)
+    const named = recorded !== undefined && session.livePids.includes(recorded.pid)
     const liveInCwd = fleet
       .all()
       .filter((other) => other.cwd === session.cwd && other.livePids.length > 0).length
-    const ambiguity = await ambiguityFor(session.cwd, liveInCwd)
+    const ambiguity = named ? null : await ambiguityFor(session.cwd, liveInCwd)
     if (ambiguity && body.force !== true) {
       json(res, 409, {
         error: 'more than one session is live in this directory',

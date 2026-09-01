@@ -18,6 +18,28 @@ export interface PsCandidate {
 }
 
 /**
+ * `ps`'s elapsed column as milliseconds, or `null` when it is not a shape `ps` produces.
+ *
+ * The column runs `[[dd-]hh:]mm:ss`, so `05:23` is five minutes and `09-04:03:55` is nine
+ * days. Subtracting it from now gives roughly when a process started, which is the only way
+ * from here to tell a pid that is still the process someone recorded from a pid the operating
+ * system has since handed to something else.
+ */
+export function elapsedMs(elapsed: string): number | null {
+  const match = /^(?:(\d+)-)?(?:(\d+):)?(\d+):(\d+)$/.exec(elapsed.trim())
+  if (!match) return null
+  const [, days, hours, minutes, seconds] = match as unknown as [
+    string,
+    string | undefined,
+    string | undefined,
+    string,
+    string,
+  ]
+  const inMinutes = (Number(days ?? '0') * 24 + Number(hours ?? '0')) * 60 + Number(minutes)
+  return inMinutes * 60_000 + Number(seconds) * 1000
+}
+
+/**
  * The seams this module is tested through.
  *
  * The parsers below are pure and can be fed text, but the layer above them — which decides

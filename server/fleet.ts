@@ -6,6 +6,7 @@ import { defaultModel } from './defaults.ts'
 import { gitState } from './git.ts'
 import { liveProcesses, type LiveProcess } from './liveness.ts'
 import { parked } from './parked.ts'
+import { registeredSessions, type RegisteredSession } from './registry.ts'
 import { TranscriptIndex, toSession } from './transcripts.ts'
 import type { GitState, Session } from '../shared/types.ts'
 
@@ -119,7 +120,12 @@ export class Fleet {
    */
   async refresh(): Promise<{ changed: Session[]; removed: string[] }> {
     const files = await this.discover()
-    const processes = await liveProcesses()
+    // Through the method rather than the module function, so a test can hand the scan a
+    // process table of its own: what this does with one is the whole of what it decides.
+    const processes = await this.processes()
+    // Which process is running which session, where the client itself has said so. Read
+    // beside the process scan because it is only believed about processes that scan found.
+    const registered = await registeredSessions(processes)
     const contexts = await reportedContexts()
     await parked.load()
     const seen = new Set<string>()
@@ -148,7 +154,7 @@ export class Fleet {
       this.knownFiles.add(file)
     }
 
-    const aliveFiles = assignLiveness(parsed, processes)
+    const aliveFiles = assignLiveness(parsed, processes, registered)
 
     // Everything that belongs to a directory rather than to a session is resolved once per
     // directory, ahead of the loop below, so that ten sessions sharing a checkout cost one
@@ -316,17 +322,37 @@ async function pool<T>(items: T[], limit: number, work: (item: T) => Promise<voi
 /**
  * Decide which transcripts a set of live processes belongs to.
  *
- * A transcript records its working directory but not the process id that writes it, and
- * several sessions often share one directory. Within each directory the most recently
- * active transcripts are matched to the live processes there, one each, which is right
- * whenever the running sessions are also the recently active ones.
+ * A transcript records its working directory but not the process id that writes it. Where the
+ * client has said which session it is running — `server/registry.ts`, and every current
+ * version does — that is taken as the answer, and the pid it names is spoken for even if the
+ * session it names has no transcript here yet: handing it to a neighbour would be attributing
+ * a process to a conversation it is known not to be running.
+ *
+ * What is left is the guess this had always been. Within each directory the most recently
+ * active of the remaining transcripts are matched to the remaining processes, one each, which
+ * is right whenever the running sessions are also the recently active ones — and, in a
+ * directory with one session in it, right outright. The guess is what a client too old to
+ * write a record falls back to, so it stays.
  */
 function assignLiveness(
-  parsed: { file: string; cwd: string; lastActivityAt: string }[],
+  parsed: { file: string; sessionId: string; cwd: string; lastActivityAt: string }[],
   processes: LiveProcess[],
+  registered: Map<string, RegisteredSession> = new Map(),
 ): Map<string, number[]> {
+  const result = new Map<string, number[]>()
+  const spokenFor = new Set<number>()
+  const attributed = new Set<string>()
+  for (const entry of registered.values()) spokenFor.add(entry.pid)
+  for (const entry of parsed) {
+    const record = registered.get(entry.sessionId)
+    if (!record) continue
+    result.set(entry.file, [record.pid])
+    attributed.add(entry.file)
+  }
+
   const byCwd = new Map<string, { file: string; lastActivityAt: string }[]>()
   for (const entry of parsed) {
+    if (attributed.has(entry.file)) continue
     const list = byCwd.get(entry.cwd) ?? []
     list.push({ file: entry.file, lastActivityAt: entry.lastActivityAt })
     byCwd.set(entry.cwd, list)
@@ -334,12 +360,12 @@ function assignLiveness(
 
   const pidsByCwd = new Map<string, number[]>()
   for (const proc of processes) {
+    if (spokenFor.has(proc.pid)) continue
     const list = pidsByCwd.get(proc.cwd) ?? []
     list.push(proc.pid)
     pidsByCwd.set(proc.cwd, list)
   }
 
-  const result = new Map<string, number[]>()
   for (const [cwd, pids] of pidsByCwd) {
     const candidates = (byCwd.get(cwd) ?? []).sort((a, b) => b.lastActivityAt.localeCompare(a.lastActivityAt))
     candidates.slice(0, pids.length).forEach((candidate, i) => {

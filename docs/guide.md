@@ -76,12 +76,11 @@ A session that finished its turn hours ago is a terminal you left open rather th
 session holding for a reply, so it drops out of the queue after `AIVIS_WAITING_WINDOW_HOURS`
 and sits with its project instead, where its age says plainly how long it has been there.
 A question outlasts a plain wait but not indefinitely. A session killed mid-dialogue writes
-no answer and nothing else, so the question stays in its transcript for good, and aivis
-attributes processes to transcripts by directory and recency rather than by identity — so a
-new session started in that directory would otherwise revive a days-old question nobody can
-answer and pin it to the top of the queue. A question therefore ages out on the same
-`AIVIS_WAITING_WINDOW_HOURS`, which is long enough that a dialogue you actually mean to
-answer is still there when you come back to it.
+no answer and nothing else, so the question stays in its transcript for good — and a session
+whose process aivis could only pair by directory and recency would otherwise revive a
+days-old question nobody can answer and pin it to the top of the queue. A question therefore
+ages out on the same `AIVIS_WAITING_WINDOW_HOURS`, which is long enough that a dialogue you
+actually mean to answer is still there when you come back to it.
 
 **Running** gives a tile to each session actually advancing: its current tool call, the
 model, how much of its context window is spent, and a sparkline of tool calls a minute over
@@ -471,19 +470,23 @@ socket the way `/exit` would; a process that ignores it is killed after three se
 pid is re-read immediately before it is signalled, so one that has already exited — and had
 its number reused by the operating system — is never signalled by mistake.
 
-There is a real limit worth stating, because it decides how this behaves. A transcript
-records its working directory but never the process id that writes it, and a `claude`
-process exposes neither its session id in its arguments nor its transcript in its open
-files. So aivis attributes processes to sessions by matching the live processes in a
-directory against the most recently active transcripts there — which is a guess, and a
-visibly unstable one: end one of two sessions in a directory and the surviving pid can be
-reattributed to the other transcript.
+Which process belongs to which conversation is worth a paragraph, because it decides how
+this behaves. A transcript records its working directory but never the process id that writes
+it, and a `claude` process exposes neither its session id in its arguments nor its transcript
+in its open files. Claude Code keeps the pairing itself, though: every session writes
+`~/.claude/sessions/<pid>.json` naming the session it is running, rewrites it when that id
+changes, and removes it on the way out. aivis reads that, checks the pid is a live `claude`
+and that the process running under it started when the record says it did — so a pid the
+operating system has since reused cannot be mistaken for the one recorded — and then knows,
+rather than infers, which process to stop.
 
-Where that guess could cost you the wrong conversation, aivis refuses rather than gambles.
-Ending a session in a directory that holds more than one live session comes back as a
+A client too old to keep that record leaves aivis where it was before: matching the live
+processes in a directory against the most recently active transcripts there, one each, which
+is exact for a directory with one session in it and a guess for a directory with six. Where
+that guess could cost you the wrong conversation, aivis refuses rather than gambles. Ending
+an unrecorded session in a directory that holds more than one live session comes back as a
 refusal naming every process it found, and the page asks whether to stop the one it has
-attributed to this session. With a single session in the directory the attribution is
-unambiguous and it just works.
+attributed to this session.
 
 ## Keep sessions across a reboot
 
@@ -711,13 +714,14 @@ Because the socket closes without acknowledging anything, a successful write is 
 delivery. Every message carries a `uuid`, and the receiving session records it under that
 same id, so aivis waits to see it in the transcript before it stops reporting the message
 as in flight. One that is never picked up says so instead of being quietly forgotten —
-which is also how a session whose process aivis has misidentified now shows up.
+which is also how a session whose process aivis has misidentified shows up.
 
 Each message names the session it is for, and the receiver drops any frame addressed to a
-different one. A transcript records a working directory but never the process id that
-writes it, so aivis's pid attribution is inference; the check means a wrong inference
-fails to deliver rather than dropping your message into someone else's conversation. Set
-`AIVIS_SOCKET_SESSION_GUARD=0` to send without it.
+different one. The pid it is written to comes from the client's own record of which session
+it is running, so a message goes to the process that said it is this conversation; the check
+is what keeps the case where there is no record — an older client, paired by directory and
+recency — a message that fails to arrive rather than one that lands in someone else's
+conversation. Set `AIVIS_SOCKET_SESSION_GUARD=0` to send without it.
 
 Attached images are written to a temporary directory and named in the message by absolute
 path, because the socket accepts only plain text and expands no attachments: a frame

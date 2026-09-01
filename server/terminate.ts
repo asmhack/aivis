@@ -8,12 +8,14 @@ const run = promisify(execFile)
 /**
  * Finishing a session: stopping the `claude` process behind it so it reads as ended.
  *
- * This is the one irreversible thing aivis does, and it rests on an attribution that is not
- * provable. A transcript records its working directory but never the process id that writes
- * it, and a `claude` process exposes neither its session id in its arguments nor its
- * transcript in its open files — so when a directory holds more than one live session, which
- * process belongs to which conversation is a guess. Rather than hide that, `endSession`
- * refuses an ambiguous case unless the caller passes `force`, and the interface says why.
+ * This is the one irreversible thing aivis does, and where it rests on an attribution rather
+ * than on a fact, it says so. A transcript records its working directory but never the process
+ * id that writes it, and a `claude` process exposes neither its session id in its arguments
+ * nor its transcript in its open files. Current clients record the pairing themselves — see
+ * `server/registry.ts` — and where that record exists the process being signalled is the one
+ * that said it is running this conversation. Where it does not, a directory holding more than
+ * one live session leaves aivis guessing, so `endSession` refuses the ambiguous case unless
+ * the caller passes `force`, and the interface says why.
  *
  * Because the pids arrive from a machine-wide `ps` scan rather than from anything aivis
  * started, a wrong guess can land on a process that has nothing to do with the session, and
