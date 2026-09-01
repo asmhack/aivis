@@ -10,6 +10,14 @@ function num(name: string, fallback: number): number {
 export const config = {
   /** Directory Claude Code writes transcripts to. */
   projectsDir: process.env.AIVIS_PROJECTS_DIR ?? path.join(os.homedir(), '.claude', 'projects'),
+  /**
+   * Directory Claude Code writes its per-process session records to.
+   *
+   * One file per live session, named for its pid and naming the session it is running. It is
+   * what tells aivis which process a conversation belongs to; `server/registry.ts` says what
+   * is done when it is not there.
+   */
+  sessionsDir: process.env.AIVIS_SESSIONS_DIR ?? path.join(os.homedir(), '.claude', 'sessions'),
   port: num('AIVIS_PORT', 4319),
   host: process.env.AIVIS_HOST ?? '127.0.0.1',
   /**

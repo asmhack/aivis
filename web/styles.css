@@ -458,6 +458,24 @@ body {
   color: var(--text-faint);
 }
 
+/* Underlined rather than boxed: it sits inside the run's own note line, where a button
+   would carry more weight than a command that is merely still going deserves. */
+.bashout__stop {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.bashout__stop:disabled {
+  color: var(--text-faint);
+  text-decoration: none;
+  cursor: default;
+}
+.bashout__stopfail { color: var(--del); }
+
 .entry--sub { opacity: 0.72; }
 
 .thinking { margin-bottom: 8px; }

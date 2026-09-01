@@ -25,6 +25,13 @@ import type { BashRun } from '../shared/types.ts'
  * semantics exactly, and has a second effect worth having: because a `!` line never touches
  * the child, it works while the session is mid-turn.
  *
+ * A run can also be stopped before it is done, which is `stopBashLine` below. A command
+ * holds its session's only `!` slot until it is over, so the `!gcloud auth login` you walked
+ * away from leaves that session unable to run another line — and the timeout it is waiting on
+ * is measured in minutes. Stopping signals the same process group a timeout would, and keeps
+ * what the command printed before it was cut off: partial output, marked as partial, is still
+ * the truth about what happened.
+ *
  * What this module does not do is pretend to be a security boundary. Running a command here
  * is the feature. `bashRefusal` is about which binds it is offered on; see the note on
  * `config.bashLines` for why that is a narrowing rather than a wall.
@@ -47,7 +54,7 @@ const MAX_PENDING = 16
 const MAX_COMMAND_CHARS = 8000
 
 /**
- * How long a timed-out command has to act on SIGTERM before SIGKILL.
+ * How long a command that is being killed has to act on SIGTERM before SIGKILL.
  *
  * The signal goes to the process group rather than the process, so a `!sleep 100 | cat` dies
  * whole — signalling only the shell would leave the pipeline behind, still holding the pipe
@@ -55,11 +62,29 @@ const MAX_COMMAND_CHARS = 8000
  */
 const KILL_GRACE_MS = 2000
 
+/**
+ * How long a stop waits for the run to be over before calling it over regardless.
+ *
+ * A little past the grace above, so the SIGKILL has been sent and its `close` has had a
+ * moment to arrive. Beyond that the process group is gone and the only thing that could still
+ * be holding the pipes open is something that left the group — a grandchild that gave itself
+ * one — which will never produce a `close`. Waiting on that for ever would leave the session
+ * unable to run anything again, which is precisely what the stop was asked for.
+ */
+const STOP_WAIT_MS = KILL_GRACE_MS + 500
+
 /** Runs waiting to be sent, by session id. Finished and still-running both live here. */
 const pending = new Map<string, BashRun[]>()
 
+/** A command in flight, and the handle on it a stop needs. */
+interface InFlight {
+  run: BashRun
+  /** Kill the process group and answer once the run has left the map. */
+  stop: () => Promise<void>
+}
+
 /** Sessions with a command in flight, so a second `!` cannot interleave with the first. */
-const running = new Set<string>()
+const running = new Map<string, InFlight>()
 
 /** What the refusal rule needs to know, so it can be exercised for binds this process is not on. */
 export interface BashPolicy {
@@ -180,6 +205,7 @@ export function startBashLine(sessionId: string, cwd: string, command: string): 
     exitCode: null,
     truncated: false,
     timedOut: false,
+    stopped: false,
     failure: null,
     timeoutMs: config.bashTimeoutMs,
     maxBytes: config.bashMaxOutputBytes,
@@ -212,7 +238,6 @@ export function startBashLine(sessionId: string, cwd: string, command: string): 
     detached: true,
   })
 
-  running.add(sessionId)
   pending.set(sessionId, [...pendingBash(sessionId), run])
 
   const stdout = capture(child.stdout, run)
@@ -235,13 +260,26 @@ export function startBashLine(sessionId: string, cwd: string, command: string): 
   }
 
   let hard: NodeJS.Timeout | undefined
-  const timer = setTimeout(() => {
-    run.timedOut = true
+  const kill = (): void => {
     signal('SIGTERM')
+    // Only ever scheduled once: a stop that lands on a run the timeout is already killing
+    // adds nothing by asking for a second SIGKILL.
+    if (hard) return
     hard = setTimeout(() => signal('SIGKILL'), KILL_GRACE_MS)
     hard.unref()
+  }
+
+  const timer = setTimeout(() => {
+    run.timedOut = true
+    kill()
   }, run.timeoutMs)
   timer.unref()
+
+  /** Resolved by `finish`, so a stop can wait for the run to be over rather than for a signal. */
+  let settle = (): void => {}
+  const closed = new Promise<void>((resolve) => {
+    settle = resolve
+  })
 
   const finish = (): void => {
     clearTimeout(timer)
@@ -251,7 +289,27 @@ export function startBashLine(sessionId: string, cwd: string, command: string): 
     run.durationMs = Date.now() - started
     run.running = false
     running.delete(sessionId)
+    settle()
   }
+
+  /**
+   * Stop the command, and answer when it is actually over rather than when it was signalled.
+   *
+   * The wait is the point. Whoever stopped a run usually wants to run something else in its
+   * place, and the session's slot is not free until this run has released it — so returning
+   * on the signal would hand the caller a 409 for the command it had just killed.
+   */
+  const stop = async (): Promise<void> => {
+    if (!run.running) return
+    run.stopped = true
+    kill()
+    await Promise.race([closed, wait(STOP_WAIT_MS)])
+    if (run.running) finish()
+  }
+
+  // The session's slot, held until `finish` gives it back. It carries the stop with it,
+  // because reaching this run's process group is something only this call can do.
+  running.set(sessionId, { run, stop })
 
   // A command that could not start — no such shell, a directory that has been deleted — never
   // emits 'close', so its failure is recorded here or the run stays 'running' for ever.
@@ -278,6 +336,42 @@ export function startBashLine(sessionId: string, cwd: string, command: string): 
   })
 
   return { ok: true, run }
+}
+
+/** What `stopBashLine` answers with: the run it stopped, or the reason it stopped nothing. */
+export type BashStop = { ok: true; run: BashRun } | { ok: false; status: number; error: string }
+
+/**
+ * Stop the `!` command a session is running, if it is still running.
+ *
+ * `runId` names the run to stop and is checked rather than trusted, because the page asking
+ * is up to a poll behind what the daemon knows: a stop clicked on a command that finished
+ * meanwhile would otherwise land on whatever was started after it. Passing nothing stops
+ * whatever is in flight, which is what a caller with no id in hand means.
+ *
+ * The run stays where it is once stopped. It is a finished run like any other and goes to the
+ * session with the next message, carrying the note that says it was cut short — a `!npm test`
+ * you stopped halfway is not a `!npm test` that passed, and the record has to say so.
+ */
+export async function stopBashLine(sessionId: string, runId?: string | null): Promise<BashStop> {
+  const inFlight = running.get(sessionId)
+  if (!inFlight) return { ok: false, status: 409, error: 'no command is running in this session' }
+  if (runId && inFlight.run.id !== runId) {
+    return {
+      ok: false,
+      status: 409,
+      error: 'that command has already finished; the one running now was started after it',
+    }
+  }
+  await inFlight.stop()
+  return { ok: true, run: inFlight.run }
+}
+
+/** A timer that does not itself keep the process alive, as a promise. */
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms).unref()
+  })
 }
 
 /**

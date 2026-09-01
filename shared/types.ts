@@ -229,6 +229,13 @@ export interface BashRun {
   truncated: boolean
   /** True when the command outlived `timeoutMs` and its process group was killed. */
   timedOut: boolean
+  /**
+   * True when it was stopped from the page rather than left to finish.
+   *
+   * Separate from `timedOut` because the two are different facts about the same partial
+   * output, and the session is told which: a run aivis gave up on, and a run you gave up on.
+   */
+  stopped: boolean
   /** Why the command never ran at all — a missing shell, a directory that is gone. */
   failure: string | null
   /** How long the command was given, so the record can say what it was killed after. */

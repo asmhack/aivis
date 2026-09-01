@@ -11,10 +11,11 @@ import { listSubagents, listWorkflows, parentReader, readAgentTools } from './ag
 import { DriverRegistry } from './driver.ts'
 import { searchFiles } from './files.ts'
 import { changeSet, fileChange } from './changes.ts'
-import { clearBash, finishedBash, forgetBash, pendingBash, startBashLine } from './bash.ts'
-import { bashStderr, formatBashPrefix } from '../shared/bash.ts'
+import { clearBash, finishedBash, forgetBash, pendingBash, startBashLine, stopBashLine } from './bash.ts'
+import { bashStderr, formatBashPrefix, pendingEntryUuid } from '../shared/bash.ts'
 import { searchCommands, expandCommand } from './commands.ts'
 import { parked } from './parked.ts'
+import { registeredSessions } from './registry.ts'
 import { ambiguityFor, endSession } from './terminate.ts'
 import { blockUsage } from './blocks.ts'
 import { attentionQueue } from './attention.ts'
@@ -479,7 +480,7 @@ export async function handleRequest(req: IncomingMessage, res: ServerResponse): 
       for (const run of pendingBash(session.id)) {
         page.entries.push({
           kind: 'bash',
-          uuid: `pending:${run.id}`,
+          uuid: pendingEntryUuid(run.id),
           at: run.at,
           command: run.command,
           stdout: run.stdout,
@@ -822,6 +823,40 @@ export async function handleRequest(req: IncomingMessage, res: ServerResponse): 
     return
   }
 
+  // Stop a `!` line that is still going. A command holds its session's only `!` slot until it
+  // is over, so this is how a `!gcloud auth login` nobody is going to finish stops standing in
+  // the way of the next line — rather than by waiting out a timeout measured in minutes.
+  //
+  // It answers when the run is actually over, so a caller that wants to run something in its
+  // place can do so on the next request without racing the command it just killed.
+  const bashStopRoute = url.pathname.match(/^\/api\/sessions\/([^/]+)\/bash\/stop$/)
+  if (bashStopRoute && req.method === 'POST') {
+    const id = decodeSegment(res, bashStopRoute[1] as string)
+    if (id === null) return
+    const session = fleet.get(id)
+    if (!session) {
+      json(res, 404, { error: 'unknown session' })
+      return
+    }
+    let body: Record<string, unknown>
+    try {
+      body = await readBody(req)
+    } catch (err) {
+      badBody(res, err)
+      return
+    }
+    // The run to stop, when the page knows which one it was looking at. Absent, the session's
+    // in-flight run is stopped whatever it is; `stopBashLine` says why the difference matters.
+    const runId = typeof body.run === 'string' ? body.run : null
+    const stopped = await stopBashLine(session.id, runId)
+    if (!stopped.ok) {
+      json(res, stopped.status, { error: stopped.error })
+      return
+    }
+    json(res, 200, { run: stopped.run })
+    return
+  }
+
   // Cut the current turn short without ending the session. Only a session aivis drives can
   // be interrupted: the control request travels on the process's standard input, and a
   // session running in a terminal does not expose one. Its socket carries no interrupt
@@ -1023,12 +1058,17 @@ export async function handleRequest(req: IncomingMessage, res: ServerResponse): 
       return
     }
 
-    // Which process writes which transcript is not recorded anywhere, so a directory with
-    // more than one live session cannot be ended on a guess without saying so first.
+    // A directory with more than one live session in it cannot be ended on a guess without
+    // saying so first — but the attribution is only a guess where the client did not record
+    // one. Asked again here rather than read off the session, so what is about to be
+    // signalled is checked against the record as it stands now rather than as the last scan
+    // left it.
+    const recorded = (await registeredSessions(await fleet.processes())).get(session.id)
+    const named = recorded !== undefined && session.livePids.includes(recorded.pid)
     const liveInCwd = fleet
       .all()
       .filter((other) => other.cwd === session.cwd && other.livePids.length > 0).length
-    const ambiguity = await ambiguityFor(session.cwd, liveInCwd)
+    const ambiguity = named ? null : await ambiguityFor(session.cwd, liveInCwd)
     if (ambiguity && body.force !== true) {
       json(res, 409, {
         error: 'more than one session is live in this directory',

@@ -34,16 +34,21 @@ after(async () => {
 })
 
 const projectsDir = path.join(root, 'projects')
+const sessionsDir = path.join(root, 'sessions')
 const home = path.join(root, 'home')
 await fs.mkdir(projectsDir, { recursive: true })
+await fs.mkdir(sessionsDir, { recursive: true })
 await fs.mkdir(path.join(home, '.claude'), { recursive: true })
 
 // Set before the first server module is loaded: `config.projectsDir` and the parked
 // registry's path are both resolved at import time, so the import below has to come after.
 process.env.AIVIS_PROJECTS_DIR = projectsDir
 process.env.HOME = home
+process.env.AIVIS_SESSIONS_DIR = sessionsDir
 
 const { Fleet } = await import('../server/fleet.ts')
+const { forgetRegistry } = await import('../server/registry.ts')
+type LiveProcess = import('../server/liveness.ts').LiveProcess
 
 // --- Fixtures ----------------------------------------------------------------------------
 
@@ -179,6 +184,98 @@ test('a driven session holding a decision reports working, and one merely driven
   const legacy = new Fleet(() => true)
   await legacy.refresh()
   assert.equal(legacy.get(id)?.status, 'working')
+})
+
+// --- Which process a session is running under ----------------------------------------------
+
+/**
+ * A fleet that scans a process table this file made up.
+ *
+ * The attribution is the one judgement here that nothing downstream re-checks: a message is
+ * written to the socket of the pid this decides on, and `end session` signals it. Driving it
+ * needs a process table, and the real one belongs to whoever is running the suite.
+ */
+class ScannedFleet extends Fleet {
+  constructor(private readonly table: LiveProcess[]) {
+    super(
+      () => false,
+      () => false,
+    )
+  }
+  override processes(): Promise<LiveProcess[]> {
+    return Promise.resolve(this.table)
+  }
+}
+
+/** One session record, in the shape `~/.claude/sessions/<pid>.json` is written in. */
+async function claims(pid: number, sessionId: string, cwd: string): Promise<void> {
+  await fs.writeFile(
+    path.join(sessionsDir, `${pid}.json`),
+    JSON.stringify({ pid, sessionId, cwd, startedAt: Date.now() - 60_000, messagingSocketPath: `/tmp/cc-socks/${pid}.sock` }),
+  )
+}
+
+/*
+ * Recency is a guess, and in a directory with more than one session open it is usually the
+ * wrong one. Nothing says so out loud: a message goes to the socket of whichever process the
+ * guess picked, that session drops a frame whose `session_id` is not its own, and the page
+ * waits for a receipt that will never come. The client records which session each process is
+ * running, so where the record exists there is nothing left to guess.
+ */
+test('the process a session is running under comes from the record, not from recency', async () => {
+  const older = 'b8e04d71-0000-4000-8000-0000000000c1'
+  const newer = 'b8e04d71-0000-4000-8000-0000000000c2'
+  const cwd = path.join(root, 'work', 'shared-checkout')
+  await fs.mkdir(cwd, { recursive: true })
+  await transcript(older, cwd, [userPrompt(older, cwd, ago(600_000), 'Older.'), assistantEnd(older, cwd, ago(590_000))])
+  await transcript(newer, cwd, [userPrompt(newer, cwd, ago(60_000), 'Newer.'), assistantEnd(newer, cwd, ago(30_000))])
+
+  // The record pairs them the opposite way round from recency: the most recently active
+  // transcript is being written by the process the guess would hand to the other one.
+  await claims(8801, newer, cwd)
+  await claims(8802, older, cwd)
+  forgetRegistry()
+
+  const fleet = new ScannedFleet([
+    { pid: 8802, cwd, args: 'claude', elapsed: '01:00' },
+    { pid: 8801, cwd, args: 'claude', elapsed: '01:00' },
+  ])
+  await fleet.refresh()
+  assert.deepEqual(fleet.get(newer)?.livePids, [8801])
+  assert.deepEqual(fleet.get(older)?.livePids, [8802])
+})
+
+test('a process the record has spoken for is not offered to a session it is not running', async () => {
+  const shown = 'b8e04d71-0000-4000-8000-0000000000c3'
+  const cwd = path.join(root, 'work', 'one-of-each')
+  await fs.mkdir(cwd, { recursive: true })
+  await transcript(shown, cwd, [userPrompt(shown, cwd, ago(60_000), 'Mine.'), assistantEnd(shown, cwd, ago(30_000))])
+
+  // The one process in this directory is running a session whose transcript is not among the
+  // ones being placed — a conversation started since the scan read the store, or one whose
+  // id changed with a `/clear`. Recency alone would hand it to the session below, which is
+  // the reading that has aivis deliver a message into someone else's conversation.
+  await claims(8803, 'b8e04d71-0000-4000-8000-0000000000c4', cwd)
+  forgetRegistry()
+
+  const fleet = new ScannedFleet([{ pid: 8803, cwd, args: 'claude', elapsed: '01:00' }])
+  await fleet.refresh()
+  assert.deepEqual(fleet.get(shown)?.livePids, [], 'it is not running, and saying so is the point')
+})
+
+test('a client that records nothing is still paired by recency, as it always was', async () => {
+  const quiet = 'b8e04d71-0000-4000-8000-0000000000c5'
+  const busy = 'b8e04d71-0000-4000-8000-0000000000c6'
+  const cwd = path.join(root, 'work', 'no-records')
+  await fs.mkdir(cwd, { recursive: true })
+  await transcript(quiet, cwd, [userPrompt(quiet, cwd, ago(900_000), 'Older.'), assistantEnd(quiet, cwd, ago(890_000))])
+  await transcript(busy, cwd, [userPrompt(busy, cwd, ago(60_000), 'Newer.'), assistantEnd(busy, cwd, ago(30_000))])
+  forgetRegistry()
+
+  const fleet = new ScannedFleet([{ pid: 8804, cwd, args: 'claude', elapsed: '01:00' }])
+  await fleet.refresh()
+  assert.deepEqual(fleet.get(busy)?.livePids, [8804], 'the recently active one gets the one process')
+  assert.deepEqual(fleet.get(quiet)?.livePids, [])
 })
 
 // --- Git state the scan rations ------------------------------------------------------------

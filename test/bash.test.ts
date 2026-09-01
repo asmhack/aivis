@@ -22,7 +22,7 @@ import path from 'node:path'
 process.env.SHELL = '/bin/sh'
 
 const { config } = await import('../server/config.ts')
-const { bashRefusal, clearBash, finishedBash, forgetBash, pendingBash, startBashLine } =
+const { bashRefusal, clearBash, finishedBash, forgetBash, pendingBash, startBashLine, stopBashLine } =
   await import('../server/bash.ts')
 const { formatBashRun, formatBashPrefix, readBashOutput, readBashRuns } =
   await import('../shared/bash.ts')
@@ -60,6 +60,7 @@ test('a run round-trips through the recorded format', () => {
     exitCode: 0,
     truncated: false,
     timedOut: false,
+    stopped: false,
     failure: null,
     timeoutMs: 1000,
     maxBytes: 1024,
@@ -86,6 +87,7 @@ test('output cannot forge the tags around it', () => {
     exitCode: 0,
     truncated: false,
     timedOut: false,
+    stopped: false,
     failure: null,
     timeoutMs: 1000,
     maxBytes: 1024,
@@ -113,6 +115,7 @@ test('an ampersand survives the escaping, which is what makes it reversible', ()
       exitCode: 0,
       truncated: false,
       timedOut: false,
+      stopped: false,
       failure: null,
       timeoutMs: 1000,
       maxBytes: 1024,
@@ -133,6 +136,7 @@ test('aivis sends runs in front of a message, and the message survives being rea
     exitCode: 0,
     truncated: false,
     timedOut: false,
+    stopped: false,
     failure: null,
     timeoutMs: 1000,
     maxBytes: 1024,
@@ -288,4 +292,62 @@ test('auto allows a `!` line on loopback and refuses it on a bind anyone can rea
 test('AIVIS_BASH says yes or no whatever the bind is', () => {
   assert.equal(bashRefusal({ mode: '1', host: '192.168.1.20' }), null)
   assert.match(String(bashRefusal({ mode: '0', host: '127.0.0.1' })), /turned off/)
+})
+
+/*
+ * Stopping a run, which is the only way out of one that is not going to end on its own.
+ *
+ * A session runs one `!` command at a time and the timeout is measured in minutes, so a
+ * `gcloud auth login` nobody is going to finish is a session that cannot run another line.
+ * Three things have to hold for the way out to be usable: the whole process group goes, not
+ * just the shell in front of it; the slot is free by the time the stop answers, so whatever
+ * asked for it can run the next command straight away; and the partial output says it was cut
+ * short, because a `!npm test` stopped halfway is not a `!npm test` that passed.
+ */
+test('a stopped run takes its pipeline with it and frees the session at once', async () => {
+  const run = started(startBashLine('s8', os.tmpdir(), 'sleep 30 | cat'))
+  const began = Date.now()
+  const outcome = await stopBashLine('s8', run.id)
+  assert.equal(outcome.ok, true)
+  assert.ok(Date.now() - began < 5000, 'the group outlived the kill')
+
+  // Answered when the run was over rather than when the signal went, which is what lets the
+  // next line start without racing the one it replaced.
+  assert.equal(run.running, false)
+  assert.equal(run.stopped, true)
+  assert.equal(run.timedOut, false)
+  assert.match(formatBashRun(run), /\[aivis\] stopped from aivis before it finished/)
+
+  const next = startBashLine('s8', os.tmpdir(), 'echo after')
+  assert.equal(next.ok, true, 'the session was still holding its slot')
+  if (next.ok) await settled(next.run)
+
+  // The stopped run is kept rather than discarded: what it printed before it was cut off is
+  // still what happened, and it travels with the next message like any other run.
+  assert.equal(pendingBash('s8').length, 2)
+  assert.equal(finishedBash('s8').length, 2)
+  forgetBash('s8')
+})
+
+test('a stop names its run, so it cannot land on the command that replaced it', async () => {
+  const first = started(startBashLine('s9', os.tmpdir(), 'echo done'))
+  await settled(first)
+
+  // Nothing is running, which is a refusal rather than a silent success: a page that thinks
+  // it stopped something has to be told it did not.
+  const idle = await stopBashLine('s9')
+  assert.equal(idle.ok, false)
+  if (!idle.ok) assert.equal(idle.status, 409)
+
+  const second = started(startBashLine('s9', os.tmpdir(), 'sleep 30'))
+  const stale = await stopBashLine('s9', first.id)
+  assert.equal(stale.ok, false, 'a stop for a finished run must not kill the one after it')
+  assert.equal(second.running, true)
+
+  // And with no id at all it stops whatever is in flight, which is what a caller that never
+  // saw the run start means by asking.
+  const stopped = await stopBashLine('s9')
+  assert.equal(stopped.ok, true)
+  assert.equal(second.running, false)
+  forgetBash('s9')
 })

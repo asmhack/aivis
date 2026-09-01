@@ -2,6 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { forgetStalls, type CommandOutput, type CommandRunner } from '../server/bounded.ts'
 import {
+  elapsedMs,
   forgetLiveProcesses,
   isClaudeProcess,
   liveProcesses,
@@ -70,6 +71,24 @@ test('padding differences between machines and platforms do not change what is p
   assert.deepEqual(parsePs(wide), [
     { pid: 99999, elapsed: '1-00:00:01', args: '/usr/local/bin/claude --print' },
   ])
+})
+
+/*
+ * The elapsed column is what tells a pid that is still the process someone recorded from a pid
+ * the operating system has handed to something else, so every shape `ps` writes it in has to
+ * read: minutes and seconds for a young process, hours for an older one, days for a terminal
+ * left open a week ago. A shape this cannot read has to say so rather than come back as zero,
+ * which would date every process to this moment and make every recycled pid look genuine.
+ */
+test('the elapsed column reads in each of the shapes ps writes it in', () => {
+  assert.equal(elapsedMs('05:23'), 5 * 60_000 + 23_000)
+  assert.equal(elapsedMs('01:02:03'), 3600_000 + 2 * 60_000 + 3000)
+  assert.equal(elapsedMs('1-00:00:01'), 24 * 3600_000 + 1000)
+  assert.equal(elapsedMs('09-04:03:55'), (9 * 24 + 4) * 3600_000 + 3 * 60_000 + 55_000)
+  assert.equal(elapsedMs('  05:23  '), 5 * 60_000 + 23_000)
+  assert.equal(elapsedMs(''), null)
+  assert.equal(elapsedMs('a while'), null)
+  assert.equal(elapsedMs('23'), null)
 })
 
 test('output with no process lines in it produces no candidates at all', () => {

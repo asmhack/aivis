@@ -29,6 +29,7 @@ import {
   resumeCommand,
   wss,
 } from '../server/index.ts'
+import { pendingRunId } from '../shared/bash.ts'
 import type { Session } from '../shared/types.ts'
 
 const tempDirs: string[] = []
@@ -217,6 +218,7 @@ test('a POST that does not claim JSON is refused, including on the routes that r
     '/api/sessions/abc/end',
     '/api/sessions/abc/answer',
     '/api/sessions/abc/bash',
+    '/api/sessions/abc/bash/stop',
     '/api/sessions',
   ]
   for (const url of routes) {
@@ -520,6 +522,73 @@ test('a `!` line runs, is shown while it waits, and travels with the next messag
     )
   } finally {
     registry.drivers.delete(id)
+    forget(id)
+  }
+})
+
+/*
+ * Stopping a `!` line, end to end.
+ *
+ * A session runs one `!` command at a time, so a run nobody is going to finish — the
+ * `gcloud auth login` waiting on a browser tab that was closed — is a session that cannot run
+ * another line until the timeout comes round, minutes later. What is only reachable from out
+ * here is the round trip the page actually makes: it finds the run in the conversation, names
+ * that run in the stop, and runs the next line on the answer. If the stop replied before the
+ * command was really over, that last step would come back as the same refusal it was for.
+ */
+test('a `!` line can be stopped, and the line that was waiting on it runs straight away', async () => {
+  const file = await transcript([
+    {
+      type: 'user',
+      uuid: 'b8e04d71-0000-4000-8000-000000000019',
+      timestamp: new Date().toISOString(),
+      message: { role: 'user', content: [{ type: 'text', text: 'hello' }] },
+    },
+  ])
+  const id = 'b8e04d71-0000-4000-8000-000000000002'
+  seed({ id, cwd: os.tmpdir(), transcriptPath: file })
+
+  try {
+    // `cat` holds the output pipe open for as long as it lives, so a stop that signalled only
+    // the shell would leave this run going and the session still blocked.
+    const ran = await sendJson({
+      method: 'POST',
+      url: `/api/sessions/${id}/bash`,
+      body: { command: 'sleep 30 | cat' },
+    })
+    assert.equal(ran.status, 202, ran.body)
+    const runId = (JSON.parse(ran.body) as { run: { id: string } }).run.id
+
+    const blocked = await sendJson({
+      method: 'POST',
+      url: `/api/sessions/${id}/bash`,
+      body: { command: 'echo waiting' },
+    })
+    assert.equal(blocked.status, 409, 'a second `!` line waits for the first')
+
+    // The page has no run ids of its own: it stops the entry it is looking at, and the id
+    // comes back out of the uuid that entry was given.
+    const page = JSON.parse((await send({ url: `/api/sessions/${id}/transcript` })).body) as {
+      entries: { kind: string; uuid: string; running?: boolean }[]
+    }
+    const shown = page.entries.find((entry) => entry.kind === 'bash' && entry.running)
+    assert.equal(pendingRunId(shown?.uuid ?? ''), runId)
+
+    const stopped = await sendJson({
+      method: 'POST',
+      url: `/api/sessions/${id}/bash/stop`,
+      body: { run: pendingRunId(shown?.uuid ?? '') },
+    })
+    assert.equal(stopped.status, 200, stopped.body)
+    assert.equal((JSON.parse(stopped.body) as { run: { running: boolean } }).run.running, false)
+
+    const after = await sendJson({
+      method: 'POST',
+      url: `/api/sessions/${id}/bash`,
+      body: { command: 'echo after' },
+    })
+    assert.equal(after.status, 202, after.body)
+  } finally {
     forget(id)
   }
 })

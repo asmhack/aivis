@@ -10,6 +10,7 @@ values show up in the interface, see the [guide](guide.md).
 | `AIVIS_ALLOWED_HOSTS` | unset | Extra hostnames aivis will answer to, comma separated. Requests are refused unless their `Host` and `Origin` are loopback, `AIVIS_HOST`, or listed here — see [Security and trust](../README.md#security-and-trust). Set it when you reach aivis under a name that is neither, such as a Tailscale host |
 | `AIVIS_SERVE_STATIC` | unset | Set to `1` to serve the built front end from `dist` instead of relying on the Vite dev server. `npm start` and `npm run serve` set it for you; running `tsx server/index.ts` by hand does not, which is why the page 404s if you forget |
 | `AIVIS_PROJECTS_DIR` | `~/.claude/projects` | Transcript store to index |
+| `AIVIS_SESSIONS_DIR` | `~/.claude/sessions` | Where Claude Code records which process is running which session. It is what tells aivis which pid to message and which to stop; a directory that is not there leaves it pairing processes to transcripts by recency, as it did before clients kept the record |
 | `AIVIS_FULL_PARSE_MAX_MB` | `4` | Transcripts above this size are sampled, not parsed whole |
 | `AIVIS_STALE_AFTER_SECONDS` | `120` | Silence after which a live session counts as stalled |
 | `AIVIS_WAITING_WINDOW_HOURS` | `4` | How recently a session must have stopped to be queued as waiting on you |
@@ -18,7 +19,7 @@ values show up in the interface, see the [guide](guide.md).
 | `AIVIS_CLAUDE_BIN` | `claude` | Executable used to drive sessions |
 | `AIVIS_PERMISSION_MODE` | `auto` | Permission mode for sessions aivis drives |
 | `AIVIS_ANSWER_ASKS` | `1` | Route questions and permission prompts to the browser. `0` goes back to Claude Code denying them |
-| `AIVIS_SOCKET_SESSION_GUARD` | `1` | Drop a socket message addressed to a session other than the one aivis matched |
+| `AIVIS_SOCKET_SESSION_GUARD` | `1` | Name the session in every socket message, so a receiver that is not it drops the frame instead of taking it |
 | `AIVIS_PARK_TTL_DAYS` | `14` | Days a session stays parked without being seen alive |
 | `AIVIS_BLOCK_HOURS` | `5` | Length of a rate-limit block |
 | `AIVIS_BLOCK_TOKEN_LIMIT` | unset | Real token ceiling, if you know it |
