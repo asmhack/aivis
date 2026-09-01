@@ -162,10 +162,14 @@ Nothing is announced for a session whose own page you are looking at. If session
 open and the window has focus when A finishes its turn, you have just watched it happen. The
 fleet page is deliberately not treated that way, even though the whole queue is on it: a row
 arriving in a list is not the same as having read the list, and the index is exactly where
-aivis gets left open while the work happens somewhere else. Nothing is announced for the queue
-as it stood when you switched notifications on either — that is the state of the world rather
-than news, and announcing it would mean a burst of banners for waits you already knew about
-every time the page reloads.
+aivis gets left open while the work happens somewhere else.
+
+Nothing is announced for the queue as it stood when you switched notifications on, either —
+that is the state of the world rather than news. What has already been announced is remembered
+across page loads for an hour, so reloading the page does not announce the same waits twice,
+and, more to the point, does not quietly reset that memory and swallow the next one. The page
+going away is not the same as you going away, which matters more than it sounds: a browser
+will discard a background tab under memory pressure and reload it when you next click it.
 
 ### When no banner appears
 

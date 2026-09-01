@@ -135,12 +135,18 @@ export function unarmed(): NotifyState {
 /**
  * Fold one queue into the notifier's memory and say what to announce.
  *
- * `ready` is the notifier being both switched on and looking at a queue that has actually
- * arrived; while it is false there is no baseline to compare against, so the state resets and
- * the next ready pass takes a fresh one. That first pass announces nothing on purpose: the
- * queue as it stood when you started watching is the state of the world, not news, and
- * announcing it would greet every page load with a burst of banners for waits already known
- * about.
+ * `enabled` and `loaded` are deliberately separate, and the difference is a bug that took
+ * three rounds of testing to find. Switched off, the baseline is dropped, so switching back on
+ * starts again from whatever is standing — none of which is news. A queue that has simply not
+ * arrived yet is nothing of the sort: there is nothing to compare against, so nothing happens
+ * and the memory is left exactly as it was. Treating the two the same meant every page load
+ * threw away what had already been announced before the first queue landed, which is what let
+ * a reload — or a browser discarding the tab under memory pressure and reloading it when you
+ * came back — swallow an item permanently.
+ *
+ * The first armed pass announces nothing on purpose: the queue as it stood when you started
+ * watching is the state of the world, not news, and announcing it would greet you with a burst
+ * of banners for waits you already knew about.
  *
  * `looking` is the window having focus. Combined with `openSessionId` it suppresses only what
  * is genuinely in front of the reader — see `onScreen`, which is narrow on purpose. Anything
@@ -150,11 +156,13 @@ export function unarmed(): NotifyState {
 export function advance(
   state: NotifyState,
   items: AttentionItem[],
-  ready: boolean,
+  enabled: boolean,
+  loaded: boolean,
   looking: boolean,
   openSessionId: string | null,
 ): { state: NotifyState; announce: AttentionItem[] } {
-  if (!ready) return { state: unarmed(), announce: [] }
+  if (!enabled) return { state: { seen: state.seen, armed: false }, announce: [] }
+  if (!loaded) return { state, announce: [] }
   const fresh = arrivals(items, state.seen)
   const seen = remember(state.seen, items)
   if (!state.armed) return { state: { seen, armed: true }, announce: [] }
@@ -162,6 +170,41 @@ export function advance(
     state: { seen, armed: true },
     announce: fresh.filter((item) => !(looking && onScreen(item, openSessionId))),
   }
+}
+
+/**
+ * How long a memory of what has been announced is still worth believing.
+ *
+ * Long enough to cover a reload, a crash, or a tab the browser discarded and restored — the
+ * cases where the page went away without you going away, and where re-announcing what you
+ * were told an hour ago is wrong. Past it the memory is dropped and the standing queue becomes
+ * the state of the world again, which is the right answer for someone coming back to a machine
+ * they left yesterday.
+ */
+export const MEMORY_TTL_MS = 3600_000
+
+/**
+ * Read back what was announced before this page existed.
+ *
+ * Returning an unarmed state is always safe: it means the next queue becomes a baseline and
+ * nothing is announced from it, so a corrupt or ancient record costs a missed banner rather
+ * than a burst of wrong ones.
+ */
+export function readMemory(raw: string | null, now: number): NotifyState {
+  if (!raw) return unarmed()
+  try {
+    const parsed = JSON.parse(raw) as { at?: unknown; ids?: unknown }
+    if (typeof parsed.at !== 'number' || !Array.isArray(parsed.ids)) return unarmed()
+    if (!(now - parsed.at < MEMORY_TTL_MS)) return unarmed()
+    return { seen: new Set(parsed.ids.filter((id): id is string => typeof id === 'string')), armed: true }
+  } catch {
+    return unarmed()
+  }
+}
+
+/** Write the memory back out, stamped so its age can be judged when it is read. */
+export function writeMemory(state: NotifyState, now: number): string {
+  return JSON.stringify({ at: now, ids: [...state.seen].slice(-SEEN_MAX) })
 }
 
 /** Trim a line to what a banner will show, marking where it was cut. */

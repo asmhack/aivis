@@ -13,7 +13,19 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { advance, arrivals, describe, onScreen, remember, SEEN_MAX, unarmed } from '../web/notify.ts'
+import {
+  advance,
+  arrivals,
+  describe,
+  MEMORY_TTL_MS,
+  onScreen,
+  readMemory,
+  remember,
+  SEEN_MAX,
+  unarmed,
+  writeMemory,
+  type NotifyState,
+} from '../web/notify.ts'
 import type { AttentionItem, AttentionKind } from '../shared/types.ts'
 
 /** One queue row, defaulting to the `waiting` case: a session that finished its turn. */
@@ -183,12 +195,26 @@ test('a question wrapped over several lines is flattened, because a banner has n
 
 /** Run a series of queues through the notifier, returning what each pass would announce. */
 function sequence(
-  passes: { items: AttentionItem[]; ready?: boolean; looking?: boolean; open?: string | null }[],
+  passes: {
+    items: AttentionItem[]
+    on?: boolean
+    loaded?: boolean
+    looking?: boolean
+    open?: string | null
+  }[],
+  from: NotifyState = unarmed(),
 ): string[][] {
-  let state = unarmed()
+  let state = from
   const out: string[][] = []
   for (const pass of passes) {
-    const step = advance(state, pass.items, pass.ready ?? true, pass.looking ?? false, pass.open ?? null)
+    const step = advance(
+      state,
+      pass.items,
+      pass.on ?? true,
+      pass.loaded ?? true,
+      pass.looking ?? false,
+      pass.open ?? null,
+    )
     state = step.state
     out.push(step.announce.map((row) => row.id))
   }
@@ -226,7 +252,7 @@ test('switching off and on takes a fresh baseline rather than a stale one', () =
   assert.deepEqual(
     sequence([
       { items: [standing] },
-      { items: [standing], ready: false },
+      { items: [standing], on: false },
       { items: [standing] },
       { items: [fresh] },
     ]),
@@ -239,7 +265,7 @@ test('a queue that has not been read yet cannot arm the notifier', () => {
   // that matters: an empty queue taken for a baseline makes the first real answer look like
   // a fleet that just now started needing you, and announces all of it.
   const arriving = item({ id: 'waiting:s1:one' })
-  assert.deepEqual(sequence([{ items: [], ready: false }, { items: [arriving] }]), [[], []])
+  assert.deepEqual(sequence([{ items: [], loaded: false }, { items: [arriving] }]), [[], []])
 })
 
 test('a row on the session page you are watching is swallowed, and stays swallowed', () => {
@@ -269,4 +295,64 @@ test('the fleet page in front of you does not swallow anything, since a list is 
     sequence([{ items: [] }, { items: [arriving], looking: true, open: null }]),
     [[], ['waiting:s1:two']],
   )
+})
+
+/*
+ * The distinction that let a reload swallow an item for good. Switched off, the baseline is
+ * dropped so that switching back on starts from whatever is standing. A queue that has merely
+ * not arrived yet is nothing of the sort — and treating the two the same threw away what had
+ * already been announced on every single page load, before the first queue had even landed.
+ */
+test('a queue that has not arrived yet leaves the memory exactly as it was', () => {
+  const armed: NotifyState = { seen: new Set(['waiting:s1:one']), armed: true }
+  const step = advance(armed, [], true, false, false, null)
+  assert.equal(step.state.armed, true, 'still armed')
+  assert.deepEqual([...step.state.seen], ['waiting:s1:one'], 'and still remembers')
+})
+
+test('switching off drops the baseline but keeps what was already announced', () => {
+  const armed: NotifyState = { seen: new Set(['waiting:s1:one']), armed: true }
+  const step = advance(armed, [], false, true, false, null)
+  assert.equal(step.state.armed, false)
+  assert.deepEqual([...step.state.seen], ['waiting:s1:one'])
+})
+
+test('a page that comes back with a memory carries on rather than re-baselining', () => {
+  // What a reload looks like, or a tab the browser discarded and restored: the item was
+  // already announced, so it must not be announced again — and the next one must not be
+  // swallowed as a fresh baseline.
+  const remembered = readMemory(
+    writeMemory({ seen: new Set(['waiting:s1:one']), armed: true }, 1_000_000),
+    1_000_060,
+  )
+  const standing = item({ id: 'waiting:s1:one' })
+  const next = item({ id: 'waiting:s1:two' })
+  assert.deepEqual(
+    sequence([{ items: [standing] }, { items: [next] }], remembered),
+    [[], ['waiting:s1:two']],
+  )
+})
+
+test('a memory older than its life is dropped, so a machine left overnight starts fresh', () => {
+  const written = writeMemory({ seen: new Set(['waiting:s1:one']), armed: true }, 1_000_000)
+  assert.equal(readMemory(written, 1_000_000 + MEMORY_TTL_MS + 1).armed, false)
+  assert.equal(readMemory(written, 1_000_000 + MEMORY_TTL_MS - 1).armed, true)
+})
+
+/*
+ * Anything unreadable has to fail towards silence rather than towards noise: an unarmed state
+ * costs one missed banner, while trusting a corrupt one could announce the whole standing
+ * queue at once.
+ */
+test('a corrupt or absent memory is read as no memory at all', () => {
+  for (const raw of [null, '', 'not json', '{}', '{"at":"soon","ids":[]}', '{"at":1,"ids":"no"}']) {
+    assert.equal(readMemory(raw, 1_000_000).armed, false, `for ${JSON.stringify(raw)}`)
+  }
+})
+
+test('a memory is capped on the way out, so storage cannot grow without bound', () => {
+  const huge = { seen: new Set(Array.from({ length: SEEN_MAX * 2 }, (_, n) => `id${n}`)), armed: true }
+  const back = readMemory(writeMemory(huge, 1_000_000), 1_000_000)
+  assert.equal(back.seen.size, SEEN_MAX)
+  assert.equal(back.seen.has(`id${SEEN_MAX * 2 - 1}`), true, 'the newest survive')
 })

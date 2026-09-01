@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AttentionItem } from '../shared/types.ts'
-import { advance, describe, unarmed, type Notice, type NotifyState } from './notify.ts'
+import {
+  advance,
+  describe,
+  readMemory,
+  unarmed,
+  writeMemory,
+  type Notice,
+  type NotifyState,
+} from './notify.ts'
 
 /**
  * Raise a system notification when a session starts needing you.
@@ -27,6 +35,16 @@ import { advance, describe, unarmed, type Notice, type NotifyState } from './not
 
 /** Where the choice is remembered, so a reload does not silently turn banners back off. */
 const PREF_KEY = 'aivis.notify'
+
+/**
+ * Where what has already been announced is remembered.
+ *
+ * Kept across page loads because the page going away is not the same as the reader going
+ * away. A reload, a crash, or a browser discarding the tab under memory pressure and restoring
+ * it on the next click would otherwise re-baseline the notifier on a queue that already holds
+ * the item, and that item would then never be announced at all.
+ */
+const MEMORY_KEY = 'aivis.notified'
 
 /**
  * The banner sent when notifications are switched on, and again by the test button.
@@ -230,11 +248,30 @@ export function useNotify(
 
   // What has been announced and whether a baseline has been taken. The rules that read it are
   // in `notify.ts` and tested there; what is left here is the part that needs a browser.
-  const state = useRef<NotifyState>(unarmed())
+  //
+  // Read from storage on the first render rather than in an effect, because the effect that
+  // uses it runs on that same first pass and would otherwise start from nothing.
+  const state = useRef<NotifyState | null>(null)
+  if (!state.current) {
+    try {
+      state.current = readMemory(localStorage.getItem(MEMORY_KEY), Date.now())
+    } catch {
+      state.current = unarmed()
+    }
+  }
 
   useEffect(() => {
-    const step = advance(state.current, items, enabled && loaded, looking(), openSessionId)
+    const before = state.current ?? unarmed()
+    const step = advance(before, items, enabled, loaded, looking(), openSessionId)
     state.current = step.state
+    if (step.state.seen.size !== before.seen.size) {
+      try {
+        localStorage.setItem(MEMORY_KEY, writeMemory(step.state, Date.now()))
+      } catch {
+        // Storage that refuses to write costs a re-baseline after the next reload, which
+        // costs a missed banner — never a wrong one.
+      }
+    }
 
     for (const item of step.announce) {
       const banner = raise(describe(item))
