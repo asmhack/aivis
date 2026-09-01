@@ -63,7 +63,7 @@ this morning, which is the wrong way round for the only item that is truly block
 the composer uses. **Dismiss** hides that particular wait rather than the session: the id it is keyed to
 carries the state, so a session that moves on and stops again comes back on its own. A
 question's id is the tool call that asked it, so dismissing one question does not hide the
-next. **notify me** in the band's header hands the same two urgent kinds to your operating
+next. The bell in the band's header hands the same two urgent kinds to your operating
 system, so you hear about them from another window — see
 [Get told when a session needs you](#get-told-when-a-session-needs-you).
 
@@ -129,10 +129,10 @@ waiting on me" from any other tab you have open. This is the floor the feature s
 is always on and there is nothing to configure.
 
 **A system notification** is the escalation: a banner from your operating system, which
-reaches you when the browser is not even on screen. Switch it on with **notify me** in the
-header of the **Needs you** band. The first click asks the browser for permission — a prompt
-only a click can open — and raises one notification straight away so you can see what one
-looks like.
+reaches you when the browser is not even on screen. Switch it on with the bell in the header
+of the **Needs you** band: struck through and warm while it is off, plain and blue once it is
+on. The first click asks the browser for permission — a prompt only a click can open — and
+raises one notification straight away so you can see what one looks like.
 
 Both are fed by the same queue, and the server pushes it over the socket the page already
 holds rather than the page asking for it on a timer. That matters for the case the feature
