@@ -40,11 +40,19 @@ export interface Notice {
   title: string
   body: string
   /**
-   * Groups a session's banners so a new one replaces the last rather than stacking.
+   * Identifies this banner, and is deliberately unique to the event rather than to the session.
    *
-   * A session that asks, gets answered, and then finishes its turn would otherwise leave
-   * three banners describing states it is no longer in. Keyed by session so the newest
-   * thing known about each one is the only thing on screen for it.
+   * It was keyed by session at first, so that a newer banner replaced the last one and a busy
+   * session could not paper the screen. That is the wrong trade, and it is worth writing down
+   * why: replacing a notification is defined to happen *quietly*, so every banner after the
+   * first for a given session arrived with no sound and no alert. The tidier stack cost the
+   * feature its entire purpose, and cost it invisibly — nothing reports that a banner was
+   * silently coalesced, so it reads exactly like code that never ran.
+   *
+   * Item ids already change whenever the state they describe changes, so keying on one means
+   * two distinct events can never collide, and replacement semantics never come into it. A
+   * session that asks and then finishes its turn now leaves two banners, which is two things
+   * that really happened; the operating system already stacks them under one application.
    */
   tag: string
 }
@@ -105,6 +113,57 @@ export function onScreen(item: AttentionItem, openSessionId: string | null): boo
   return openSessionId === item.sessionId
 }
 
+/**
+ * Everything the notifier remembers between one queue and the next.
+ *
+ * `armed` is false until a baseline has been taken, and `seen` is every item id observed
+ * since. Both were refs inside the hook, which put the whole state machine — the part where
+ * every branch that can swallow a notification lives — in the half of the feature that needs
+ * a browser and therefore had no tests at all. It is a value and a function now, so the
+ * sequences that matter can be written down.
+ */
+export interface NotifyState {
+  seen: Set<string>
+  armed: boolean
+}
+
+/** Nothing seen and no baseline: what the notifier holds while it is switched off. */
+export function unarmed(): NotifyState {
+  return { seen: new Set(), armed: false }
+}
+
+/**
+ * Fold one queue into the notifier's memory and say what to announce.
+ *
+ * `ready` is the notifier being both switched on and looking at a queue that has actually
+ * arrived; while it is false there is no baseline to compare against, so the state resets and
+ * the next ready pass takes a fresh one. That first pass announces nothing on purpose: the
+ * queue as it stood when you started watching is the state of the world, not news, and
+ * announcing it would greet every page load with a burst of banners for waits already known
+ * about.
+ *
+ * `looking` is the window having focus. Combined with `openSessionId` it suppresses only what
+ * is genuinely in front of the reader — see `onScreen`, which is narrow on purpose. Anything
+ * suppressed is still folded into `seen`, because it has been seen; announcing it later, once
+ * the reader has tabbed away and it is no longer new, would be worse than silence.
+ */
+export function advance(
+  state: NotifyState,
+  items: AttentionItem[],
+  ready: boolean,
+  looking: boolean,
+  openSessionId: string | null,
+): { state: NotifyState; announce: AttentionItem[] } {
+  if (!ready) return { state: unarmed(), announce: [] }
+  const fresh = arrivals(items, state.seen)
+  const seen = remember(state.seen, items)
+  if (!state.armed) return { state: { seen, armed: true }, announce: [] }
+  return {
+    state: { seen, armed: true },
+    announce: fresh.filter((item) => !(looking && onScreen(item, openSessionId))),
+  }
+}
+
 /** Trim a line to what a banner will show, marking where it was cut. */
 function clip(text: string, max = BODY_MAX): string {
   const line = text.replace(/\s+/g, ' ').trim()
@@ -122,7 +181,7 @@ function clip(text: string, max = BODY_MAX): string {
  * that tells two sessions in the same project apart.
  */
 export function describe(item: AttentionItem): Notice {
-  const tag = `aivis:${item.sessionId}`
+  const tag = `aivis:${item.id}`
   const project = item.projectName
   if (item.kind === 'asking') {
     return {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { DriverStatus, ServerMessage, Session } from '../shared/types.ts'
+import type { AttentionItem, DriverStatus, ServerMessage, Session } from '../shared/types.ts'
 
 export type ConnectionState = 'connecting' | 'open' | 'closed'
 
@@ -80,10 +80,20 @@ export function useFleet(): {
   sessions: Session[]
   connection: ConnectionState
   drivers: Map<string, DriverStatus>
+  attention: AttentionItem[] | null
 } {
   const [sessions, setSessions] = useState<Map<string, Session>>(new Map())
   const [connection, setConnection] = useState<ConnectionState>('connecting')
   const [drivers, setDrivers] = useState<Map<string, DriverStatus>>(new Map())
+  /**
+   * The attention queue as the server last pushed it, or null if it never has.
+   *
+   * Null is a statement about the server rather than about the fleet: a build older than the
+   * one that added this message answers `/api/attention` perfectly well and simply never
+   * mentions it here. Keeping the two apart is what lets the page fall back to polling for
+   * exactly as long as it is talking to such a server, and stop the moment it is not.
+   */
+  const [attention, setAttention] = useState<AttentionItem[] | null>(null)
   const socketRef = useRef<WebSocket | null>(null)
 
   useEffect(() => {
@@ -103,6 +113,10 @@ export function useFleet(): {
       socket.onopen = () => setConnection('open')
       socket.onmessage = (event) => {
         const message = JSON.parse(event.data as string) as ServerMessage
+        if (message.kind === 'attention') {
+          setAttention(message.queue.items)
+          return
+        }
         if (message.kind === 'driver') {
           confirmed.add(message.status.sessionId)
           setDrivers((previous) => applyDriverStatus(previous, message.status))
@@ -147,5 +161,5 @@ export function useFleet(): {
   }, [])
 
   const list = [...sessions.values()].sort((a, b) => b.lastActivityAt.localeCompare(a.lastActivityAt))
-  return { sessions: list, connection, drivers }
+  return { sessions: list, connection, drivers, attention }
 }

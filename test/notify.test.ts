@@ -13,7 +13,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { arrivals, describe, onScreen, remember, SEEN_MAX } from '../web/notify.ts'
+import { advance, arrivals, describe, onScreen, remember, SEEN_MAX, unarmed } from '../web/notify.ts'
 import type { AttentionItem, AttentionKind } from '../shared/types.ts'
 
 /** One queue row, defaulting to the `waiting` case: a session that finished its turn. */
@@ -149,9 +149,19 @@ test('a finished turn is announced with the prompt the session opened with, whic
   assert.equal(notice.body, 'ship the thing')
 })
 
-test('a session gets one banner at a time, so the newest thing known about it replaces the last', () => {
-  assert.equal(describe(asking({ sessionId: 's1' })).tag, describe(item({ sessionId: 's1' })).tag)
+/*
+ * The regression that made the whole feature look like code that never ran. Banners were once
+ * tagged by session so a newer one replaced the last, which is defined to happen *quietly* —
+ * so the second and every later banner for a session arrived with no alert, and nothing
+ * anywhere reported that it had been coalesced. Two distinct events must never share a tag.
+ */
+test('two events never share a tag, even for the same session, because replacing a banner is silent', () => {
+  assert.notEqual(describe(asking({ sessionId: 's1' })).tag, describe(item({ sessionId: 's1' })).tag)
   assert.notEqual(describe(item({ sessionId: 's1' })).tag, describe(item({ sessionId: 's2' })).tag)
+})
+
+test('a tag is the item id, which already changes whenever the state it describes changes', () => {
+  assert.equal(describe(item({ id: 'waiting:s1:2026-09-01T08:00:00.000Z' })).tag, 'aivis:waiting:s1:2026-09-01T08:00:00.000Z')
 })
 
 test('a long question is clipped rather than handed to the browser whole', () => {
@@ -163,4 +173,100 @@ test('a long question is clipped rather than handed to the browser whole', () =>
 test('a question wrapped over several lines is flattened, because a banner has no line breaks', () => {
   const notice = describe(asking({ ask: { ...asking().ask!, question: 'which\n  branch\n\nnow?' } }))
   assert.equal(notice.body, 'which branch now?')
+})
+
+/*
+ * The state machine, which used to live as two refs inside the hook and so had no tests at
+ * all — while being the half of the feature where every branch that can swallow a
+ * notification lives. Each sequence below is one the reader would experience as silence.
+ */
+
+/** Run a series of queues through the notifier, returning what each pass would announce. */
+function sequence(
+  passes: { items: AttentionItem[]; ready?: boolean; looking?: boolean; open?: string | null }[],
+): string[][] {
+  let state = unarmed()
+  const out: string[][] = []
+  for (const pass of passes) {
+    const step = advance(state, pass.items, pass.ready ?? true, pass.looking ?? false, pass.open ?? null)
+    state = step.state
+    out.push(step.announce.map((row) => row.id))
+  }
+  return out
+}
+
+test('the first ready pass is a baseline, so a page load never opens with a burst of banners', () => {
+  const standing = item({ id: 'waiting:s1:one' })
+  assert.deepEqual(sequence([{ items: [standing] }]), [[]])
+})
+
+test('what arrives after the baseline is announced', () => {
+  const first = item({ id: 'waiting:s1:one' })
+  const second = item({ id: 'waiting:s1:two' })
+  assert.deepEqual(sequence([{ items: [first] }, { items: [second] }]), [[], ['waiting:s1:two']])
+})
+
+test('the same queue re-read announces nothing, however many times it is pushed', () => {
+  const only = item({ id: 'waiting:s1:one' })
+  const second = item({ id: 'waiting:s1:two' })
+  assert.deepEqual(
+    sequence([{ items: [only] }, { items: [second] }, { items: [second] }, { items: [second] }]),
+    [[], ['waiting:s1:two'], [], []],
+  )
+})
+
+/*
+ * Switching off and on again is what someone does when they suspect the feature is broken.
+ * It must not leave the notifier believing it has already announced the queue it is looking
+ * at — but it must not announce that standing queue either, since none of it is news.
+ */
+test('switching off and on takes a fresh baseline rather than a stale one', () => {
+  const standing = item({ id: 'waiting:s1:one' })
+  const fresh = item({ id: 'waiting:s1:two' })
+  assert.deepEqual(
+    sequence([
+      { items: [standing] },
+      { items: [standing], ready: false },
+      { items: [standing] },
+      { items: [fresh] },
+    ]),
+    [[], [], [], ['waiting:s1:two']],
+  )
+})
+
+test('a queue that has not been read yet cannot arm the notifier', () => {
+  // `ready` false is both "switched off" and "nothing fetched", and the second is the one
+  // that matters: an empty queue taken for a baseline makes the first real answer look like
+  // a fleet that just now started needing you, and announces all of it.
+  const arriving = item({ id: 'waiting:s1:one' })
+  assert.deepEqual(sequence([{ items: [], ready: false }, { items: [arriving] }]), [[], []])
+})
+
+test('a row on the session page you are watching is swallowed, and stays swallowed', () => {
+  const mine = item({ id: 'waiting:s1:two', sessionId: 's1' })
+  assert.deepEqual(
+    sequence([
+      { items: [item({ id: 'waiting:s1:one', sessionId: 's1' })] },
+      { items: [mine], looking: true, open: 's1' },
+      { items: [mine], looking: false, open: null },
+    ]),
+    [[], [], []],
+    'announcing it later, once it is no longer new, would be worse than silence',
+  )
+})
+
+test('a row for another session reaches you even while you read this one', () => {
+  const other = item({ id: 'waiting:s2:one', sessionId: 's2' })
+  assert.deepEqual(
+    sequence([{ items: [] }, { items: [other], looking: true, open: 's1' }]),
+    [[], ['waiting:s2:one']],
+  )
+})
+
+test('the fleet page in front of you does not swallow anything, since a list is not read by being open', () => {
+  const arriving = item({ id: 'waiting:s1:two' })
+  assert.deepEqual(
+    sequence([{ items: [] }, { items: [arriving], looking: true, open: null }]),
+    [[], ['waiting:s1:two']],
+  )
 })

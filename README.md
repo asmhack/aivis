@@ -38,9 +38,10 @@ remember. Three bands answer three questions:
 
 - **What needs you.** Sessions that asked a question, finished a turn and are holding for a
   reply, or stopped mid-turn and went quiet, ranked longest wait first, each with the action
-  that deals with it. Switch **notify me** on and the two urgent kinds also arrive as system
-  notifications — Notification Center on macOS, whatever your desktop uses on Linux — so you
-  hear about them from another window instead of keeping the page in front of you.
+  that deals with it. The tab itself carries the count, so `(2) aivis` in the tab strip answers
+  "is anything waiting on me" from wherever you are working; switch **notify me** on and the
+  two urgent kinds also arrive as system notifications, so you hear about them without the
+  browser on screen at all.
 - **What is advancing.** A tile for each session actually doing something, carrying its
   current tool call, its model, how much of its context window is spent, and a sparkline of
   tool calls a minute over the last quarter of an hour.

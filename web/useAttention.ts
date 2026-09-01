@@ -15,7 +15,15 @@ import type { AttentionItem } from '../shared/types.ts'
  * second for the first would make the first real answer look like a fleet that just now
  * started needing you, and announce all of it.
  */
-export function useAttention(intervalMs = 5000): {
+export function useAttention(
+  /**
+   * True while the server is pushing the queue over the fleet socket, which makes this poll
+   * redundant. It is a parameter rather than a decision made here because only the caller
+   * can see the socket, and only the socket knows whether it is still open.
+   */
+  paused = false,
+  intervalMs = 5000,
+): {
   items: AttentionItem[]
   loaded: boolean
   reload: () => void
@@ -40,6 +48,7 @@ export function useAttention(intervalMs = 5000): {
   }, [])
 
   useEffect(() => {
+    if (paused) return
     stopped.current = false
     void load()
     const timer = setInterval(() => void load(), intervalMs)
@@ -47,9 +56,32 @@ export function useAttention(intervalMs = 5000): {
       stopped.current = true
       clearInterval(timer)
     }
-  }, [load, intervalMs])
+  }, [load, intervalMs, paused])
 
   return { items, loaded, reload: () => void load() }
+}
+
+/**
+ * Which of the two queues to believe.
+ *
+ * There are two because the socket is the better source and cannot be the only one: a server
+ * older than the build that added the pushed message never sends it, and a socket that has
+ * dropped stops sending it without saying so. Neither case may be allowed to look like a
+ * fleet that has gone quiet, which is what an empty queue would claim.
+ *
+ * So the socket wins while it is open and has spoken, the poll wins once it has answered, and
+ * what the socket last said stands in for the moment in between — stale by a few seconds,
+ * which is the mildest of the three ways this can be wrong.
+ */
+export function preferredQueue(
+  pushed: AttentionItem[] | null,
+  socketOpen: boolean,
+  polled: AttentionItem[],
+  polledLoaded: boolean,
+): { items: AttentionItem[]; loaded: boolean } {
+  if (socketOpen && pushed) return { items: pushed, loaded: true }
+  if (polledLoaded) return { items: polled, loaded: true }
+  return pushed ? { items: pushed, loaded: true } : { items: [], loaded: false }
 }
 
 const DISMISSED_KEY = 'aivis.dismissed'

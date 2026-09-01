@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AttentionItem } from '../shared/types.ts'
-import { arrivals, describe, onScreen, remember } from './notify.ts'
+import { advance, describe, unarmed, type Notice, type NotifyState } from './notify.ts'
 
 /**
  * Raise a system notification when a session starts needing you.
@@ -13,13 +13,49 @@ import { arrivals, describe, onScreen, remember } from './notify.ts'
  * looks and how long it stays belongs to the browser and the operating system rather than
  * to aivis.
  *
- * The decisions this makes are all in `notify.ts` and tested there. What is left here is
- * the part that needs a browser: asking permission once, knowing whether you are looking,
- * and turning an item into a `Notification`.
+ * The decisions this makes are all in `notify.ts` and tested there. What is left here is the
+ * part that needs a browser: following the permission, knowing whether you are looking, and
+ * turning an item into a `Notification`.
+ *
+ * One thing it deliberately does not claim to know is whether a banner was ever drawn. The
+ * browser reports that it showed one even where there is no screen to show it on, so a system
+ * configured to give the browser no banner produces silence that is indistinguishable, from
+ * here, from code that never ran. That is why `raised` is counted and reported, why `test`
+ * exists, and why the count on the tab (`useBadge.ts`) is the signal this feature actually
+ * rests on rather than a decoration on top of it.
  */
 
 /** Where the choice is remembered, so a reload does not silently turn banners back off. */
 const PREF_KEY = 'aivis.notify'
+
+/**
+ * The banner sent when notifications are switched on, and again by the test button.
+ *
+ * One notice for both, because they are the same errand: show the reader, right now, what a
+ * banner from aivis looks like, so that a screen which stays empty is a fact about their
+ * system rather than a question about this feature.
+ *
+ * The tag counts, for the reason given on `Notice.tag`: a fixed one meant the second greeting
+ * silently replaced the first, so switching notifications off and on again to check whether
+ * they worked was guaranteed to show nothing — which is exactly what someone does when they
+ * suspect the feature is broken.
+ */
+function hello(n: number): Notice {
+  return {
+    title: 'aivis will tell you',
+    body: 'When a session asks you something or finishes its turn, it shows up here.',
+    tag: `aivis:hello:${n}`,
+  }
+}
+
+/**
+ * How many raised banners are held on to.
+ *
+ * A `Notification` with nothing referencing it is collectable, and a browser that collects
+ * one before the operating system has drawn it makes it vanish for no reason a reader could
+ * ever work out. Holding the last few costs nothing and closes that off.
+ */
+const HELD = 8
 
 /** The toggle, and enough about its state for the page to say why it is off. */
 export interface Notifier {
@@ -29,8 +65,41 @@ export interface Notifier {
   enabled: boolean
   /** The browser's answer to the permission prompt, or null where there is no API to ask. */
   permission: NotificationPermission | null
+  /**
+   * How many banners this page has handed to the browser since it loaded.
+   *
+   * On screen because it is the only part of the chain aivis can honestly report. Everything
+   * after the call belongs to the browser and the operating system, and neither says whether
+   * the banner was ever shown, so a reader who saw nothing needs to know whether there was
+   * anything to see. A count that climbs while the screen stays empty names the culprit.
+   */
+  raised: number
   /** Flip it, returning the line to show you about what happened. */
   toggle: () => Promise<string>
+  /**
+   * Raise one now, so the path can be checked without waiting for a session to need you.
+   *
+   * The wait for a real one is unbounded, which made every failure look the same as patience.
+   */
+  test: () => string
+}
+
+/**
+ * Post one banner.
+ *
+ * `renotify` is belt and braces against the failure this feature has already had once.
+ * Replacing a notification that shares a tag with a live one is defined to happen *quietly*,
+ * and nothing anywhere reports that it happened, so a collision reads exactly like code that
+ * never ran. Tags are unique per event now (see `Notice.tag`) and no replacement should ever
+ * occur — but if one somehow did, this makes it announce itself rather than vanish. It is
+ * invalid without a tag, which every notice carries.
+ */
+function post(notice: { title: string; body: string; tag: string }): Notification {
+  return new Notification(notice.title, {
+    body: notice.body,
+    tag: notice.tag,
+    renotify: true,
+  } as NotificationOptions & { renotify: boolean })
 }
 
 /** Whether this page is the one you are looking at right now. */
@@ -57,10 +126,31 @@ export function useNotify(
     }
   })
 
-  // Permission is the browser's to withdraw, and it does so without telling the page, so
-  // what was asked for is kept separately from what is allowed and the two are required to
-  // agree before anything is raised.
+  // What was asked for is kept apart from what is allowed, and both must agree before anything
+  // is raised. Permission is the browser's to withdraw — through site settings, or a sweep of
+  // permissions a site has not used lately — and it withdraws it without telling the page.
   const enabled = supported && wanted && permission === 'granted'
+
+  // So the permission is followed rather than snapshotted. Read once at mount, the pill goes
+  // on reading "notifications on" over a browser that has quietly stopped honouring the
+  // calls, which is the most misleading thing this control could say.
+  useEffect(() => {
+    if (!supported || !navigator.permissions?.query) return
+    let status: PermissionStatus | null = null
+    const follow = (): void => setPermission(Notification.permission)
+    void navigator.permissions
+      .query({ name: 'notifications' as PermissionName })
+      .then((result) => {
+        status = result
+        result.addEventListener('change', follow)
+        follow()
+      })
+      .catch(() => {
+        // A browser that will not report on this permission still answers
+        // `Notification.permission`, which is what the toggle re-reads anyway.
+      })
+    return () => status?.removeEventListener('change', follow)
+  }, [supported])
 
   const want = useCallback((next: boolean): void => {
     setWanted(next)
@@ -71,9 +161,35 @@ export function useNotify(
     }
   }, [])
 
+  const [raised, setRaised] = useState(0)
+  const held = useRef<Notification[]>([])
+  // Counted in a ref as well as in state, because the greeting's tag is built from it and has
+  // to be distinct on the same tick that raises it, before a render could have caught up.
+  const count = useRef(0)
+
+  /**
+   * Hand one banner to the browser, count it, and keep hold of it.
+   *
+   * The count is what the page reports, and it counts calls rather than banners seen — which
+   * is the honest thing to count, because nothing downstream of here reports back.
+   */
+  const raise = useCallback((notice: Notice): Notification | null => {
+    try {
+      const banner = post(notice)
+      held.current = [...held.current.slice(-(HELD - 1)), banner]
+      count.current += 1
+      setRaised(count.current)
+      return banner
+    } catch {
+      // A browser that throws on the constructor has told the reader nothing, so neither is
+      // this counted. Everything else on the page carries on.
+      return null
+    }
+  }, [])
+
   const toggle = useCallback(async (): Promise<string> => {
     if (!supported) {
-      return 'this browser will not show notifications on this page — they need https or localhost'
+      return 'this browser offers no notifications to this page — they need https, or a loopback address like localhost or 127.0.0.1'
     }
     if (wanted) {
       want(false)
@@ -92,12 +208,18 @@ export function useNotify(
     want(true)
     // Proof the whole path works, sent the moment it is switched on. Without it the next
     // banner may be an hour away and there is no way to tell "waiting" from "broken".
-    new Notification('aivis will tell you', {
-      body: 'When a session asks you something or finishes its turn, it shows up here.',
-      tag: 'aivis:hello',
-    })
+    raise(hello(count.current))
     return 'notifications on'
-  }, [supported, wanted, want])
+  }, [supported, wanted, want, raise])
+
+  const test = useCallback((): string => {
+    if (!supported) return 'this browser has no notifications to test'
+    if (Notification.permission !== 'granted') return 'notifications are not switched on'
+    raise(hello(count.current))
+    // Deliberately not "sent". aivis knows only that the browser accepted it, and the whole
+    // reason this button exists is that the two are not the same thing.
+    return 'notification raised — if nothing appeared, your system is suppressing it'
+  }, [supported, raise])
 
   // Kept in a ref so that changing how a click is handled does not re-run the effect below
   // and re-arm it, which would swallow whatever arrived in between.
@@ -106,36 +228,17 @@ export function useNotify(
     open.current = onOpen
   }, [onOpen])
 
-  const seen = useRef<Set<string>>(new Set())
-  const armed = useRef(false)
+  // What has been announced and whether a baseline has been taken. The rules that read it are
+  // in `notify.ts` and tested there; what is left here is the part that needs a browser.
+  const state = useRef<NotifyState>(unarmed())
 
   useEffect(() => {
-    if (!enabled || !loaded) {
-      // Off, or nothing fetched yet. Either way there is no baseline to compare against,
-      // so the next pass has to start one rather than treat the whole queue as news.
-      armed.current = false
-      seen.current = new Set()
-      return
-    }
+    const step = advance(state.current, items, enabled && loaded, looking(), openSessionId)
+    state.current = step.state
 
-    const fresh = arrivals(items, seen.current)
-    seen.current = remember(seen.current, items)
-
-    // The queue as it stood when you switched notifications on is the state of the world,
-    // not news. Announcing it would mean a burst of banners for waits you already knew
-    // about every time the page reloads.
-    if (!armed.current) {
-      armed.current = true
-      return
-    }
-
-    for (const item of fresh) {
-      // Marked as announced above whether or not a banner is raised: an item that arrived
-      // on the session page you were reading has been watched, and telling you about it
-      // later — once you have tabbed away and it is no longer new — is worse than silence.
-      if (looking() && onScreen(item, openSessionId)) continue
-      const notice = describe(item)
-      const banner = new Notification(notice.title, { body: notice.body, tag: notice.tag })
+    for (const item of step.announce) {
+      const banner = raise(describe(item))
+      if (!banner) continue
       banner.onclick = () => {
         // Clicking a banner is a request to deal with the session it names, so the window
         // comes forward and the page is already on that session when it does.
@@ -144,7 +247,7 @@ export function useNotify(
         banner.close()
       }
     }
-  }, [enabled, loaded, items, openSessionId])
+  }, [enabled, loaded, items, openSessionId, raise])
 
-  return { supported, enabled, permission, toggle }
+  return { supported, enabled, permission, raised, toggle, test }
 }

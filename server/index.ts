@@ -28,7 +28,13 @@ const clients = new Set<WebSocket>()
 // Exported for the same reason `fleet` below is: a test driving `handleRequest` has to be
 // able to put a driver in front of the message route, which is the only path on which a
 // held `!` run can be seen to travel with the message it was flushed into.
-export const drivers = new DriverRegistry((status) => broadcast({ kind: 'driver', status }))
+export const drivers = new DriverRegistry((status) => {
+  broadcast({ kind: 'driver', status })
+  // A decision a driver is holding is queued from here and nowhere else — Claude Code writes
+  // no transcript record for a permission prompt until it is answered — so the queue has to
+  // be pushed on the driver's word rather than waiting for a scan that will find nothing.
+  pushAttention()
+})
 // The fleet reads transcripts, which say nothing while a session waits on a permission
 // prompt, so it asks the driver registry whether the silence has a reason. It is exported
 // so that a test driving `handleRequest` can put a session in front of a route without
@@ -76,6 +82,24 @@ function broadcast(message: ServerMessage): void {
 }
 
 /**
+ * Push the attention queue to every connected page.
+ *
+ * Called wherever something that could change the queue has changed: a session whose
+ * displayed state moved, a session that left the fleet, and a driver reporting a decision it
+ * is holding — that last one being the only source for a permission prompt, which writes
+ * nothing to a transcript until it is answered.
+ *
+ * The queue is derived from state already in memory, so building it costs nothing worth
+ * measuring, and it is small. Sending it is what lets a page in a background tab hear about
+ * a session that needs its reader: a browser throttles a hidden tab's timers to about once a
+ * minute and may stop running them altogether, so anything that polls is at its slowest
+ * exactly when the page has most need of being told.
+ */
+function pushAttention(): void {
+  broadcast({ kind: 'attention', queue: attentionQueue(fleet.all(), heldDecisions()) })
+}
+
+/**
  * Recompute the fleet and push what moved.
  *
  * Refreshes overlap when a scan takes longer than the interval, so a running refresh
@@ -94,6 +118,9 @@ async function refresh(): Promise<void> {
       for (const id of removed) forgetBash(id)
       broadcast({ kind: 'removed', ids: removed })
     }
+    // Only when something moved. A scan that found the fleet exactly as it left it has not
+    // changed the queue either, and a page has no use for being told so every few seconds.
+    if (changed.length > 0 || removed.length > 0) pushAttention()
   } catch (err) {
     console.error('[aivis] refresh failed:', err)
   } finally {
@@ -1272,6 +1299,12 @@ wss.on('connection', (socket) => {
     scannedAt: new Date().toISOString(),
   }
   socket.send(JSON.stringify(snapshot))
+  socket.send(
+    JSON.stringify({
+      kind: 'attention',
+      queue: attentionQueue(fleet.all(), heldDecisions()),
+    } satisfies ServerMessage),
+  )
   for (const status of drivers.statuses()) {
     socket.send(JSON.stringify({ kind: 'driver', status } satisfies ServerMessage))
   }

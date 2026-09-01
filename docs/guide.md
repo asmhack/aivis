@@ -119,49 +119,81 @@ Everything the page shows comes from the same sources:
 ## Get told when a session needs you
 
 The queue only works while you are reading it, and most of the time you are not — you are in
-an editor, or a terminal, or another tab. **notify me**, in the header of the **Needs you**
-band, hands that queue to your operating system: a session that asks you something or
-finishes its turn raises a system notification, which lands in Notification Center on macOS
-and in whatever your desktop uses on Linux. aivis does not draw those banners and cannot
-style them or decide how long they stay — that belongs to your browser and your desktop, and
-both offer settings for it.
+an editor, or a terminal, or another tab. Two things carry it to you instead, and they are
+deliberately not the same kind of thing.
 
-Clicking it the first time asks the browser for permission, which is a prompt only a click
-can open, and sends one notification straight back so you can see that the path works end to
-end. The choice is remembered. Turning it off stops the banners without touching the
-permission, so turning it on again is one click; if you deny permission outright the browser
-will not ask a second time, and you have to allow it in that page's site settings.
+**The count on the tab** needs no permission and cannot be switched off from outside the page.
+Whenever something is asking you or holding for your reply, the tab title reads `(2) aivis`
+and its icon carries the same number, so a glance at the tab strip answers "is anything
+waiting on me" from any other tab you have open. This is the floor the feature stands on. It
+is always on and there is nothing to configure.
 
-Two of the queue's three kinds are announced:
+**A system notification** is the escalation: a banner from your operating system, which
+reaches you when the browser is not even on screen. Switch it on with **notify me** in the
+header of the **Needs you** band. The first click asks the browser for permission — a prompt
+only a click can open — and raises one notification straight away so you can see what one
+looks like.
+
+Both are fed by the same queue, and the server pushes it over the socket the page already
+holds rather than the page asking for it on a timer. That matters for the case the feature
+exists for: a browser throttles a hidden tab's timers to roughly once a minute and may stop
+running them altogether, so anything polled is slowest exactly when the tab is in the
+background and being told is the whole point.
+
+### What raises a banner
 
 | Kind | What the banner says |
 | --- | --- |
 | asking you | **project is asking you**, with the question itself underneath — or **project needs a decision** for a permission prompt, since allow-or-deny is not the same errand as writing an answer |
 | waiting on you | **project finished its turn**, with the prompt the session opened with underneath, which is what tells two sessions in the same project apart |
 
-**stalled** is deliberately not announced. It means only that a live session has gone quiet
-without saying why, which is as often a long command as a problem, and a notification that
-cries wolf is worse than none.
+**stalled** is deliberately not announced, and is not counted on the tab either. It means only
+that a live session has gone quiet without saying why, which is as often a long command as a
+problem, and a notification that cries wolf is worse than none. The queue on the page still
+shows it, because being looked at is a lower bar than following you into another window.
 
-Each session gets one banner at a time: a newer one replaces whatever aivis last said about
-that session, so a session that asks, is answered, and then finishes its turn does not leave
-three banners describing states it is no longer in. Clicking a banner brings the window
-forward with that session already open.
+Every banner is its own banner. An earlier version grouped them by session so a newer one
+replaced the last, which is worth knowing about because of how it failed: replacing a
+notification is defined to happen *quietly*, so the second and every later banner for a
+session arrived with no alert at all, and nothing anywhere reported that it had been
+swallowed. Clicking a banner brings the window forward with that session already open.
 
 Nothing is announced for a session whose own page you are looking at. If session A's page is
-open and the window has focus when A finishes its turn, you have just watched it happen and
-a banner would only repeat it. The fleet page is deliberately not treated that way, even
-though the whole queue is on it: a row arriving in a list is not the same as having read the
-list, and the index is exactly where aivis gets left open while the work happens somewhere
-else. Nothing is announced for the queue as it stood when you switched notifications on
-either — that is the state of the world rather than news, and announcing it would mean a
-burst of banners for waits you already knew about every time the page reloads.
+open and the window has focus when A finishes its turn, you have just watched it happen. The
+fleet page is deliberately not treated that way, even though the whole queue is on it: a row
+arriving in a list is not the same as having read the list, and the index is exactly where
+aivis gets left open while the work happens somewhere else. Nothing is announced for the queue
+as it stood when you switched notifications on either — that is the state of the world rather
+than news, and announcing it would mean a burst of banners for waits you already knew about
+every time the page reloads.
 
-Two limits are worth knowing. The banners come from the page rather than from a server
-pushing to your device, so the aivis tab has to stay open — a closed tab is a silent one.
-And browsers only offer the API to pages on `https` or `localhost`, so if you reach aivis on
-a LAN address over plain http the switch is there but inert, and says why on hover or on a
-click.
+### When no banner appears
+
+aivis cannot tell whether your operating system drew a banner it raised. The browser reports
+that it showed one even when there is no screen to show it on, so there is no answer to be had
+by asking. This is why the tab count exists, and why the switch keeps a count of its own: the
+tooltip says how many banners have been raised since the page loaded, and **test** beside it
+raises one on demand rather than making you wait for a session.
+
+If **test** produces nothing on screen and nothing in Notification Center, the browser
+accepted it and your operating system threw it away. On macOS the usual cause is that the
+browser itself is not allowed to notify:
+
+1. **System Settings › Notifications › Google Chrome** — turn on *Allow notifications*, and
+   set the alert style to *Banners* or *Alerts*. With it off, macOS accepts each notification
+   and then files it nowhere: no banner, no sound, and no Notification Center entry either, so
+   an empty Notification Center is the expected symptom rather than a separate fault. Chrome
+   registers a second row, *Google Chrome Helper (Alerts)*; enabling that one too costs
+   nothing and covers alert-style notifications.
+2. **A Focus mode**, which suppresses banners per application.
+3. **Screen sharing or mirroring**, which macOS treats as its own reason to go quiet — see
+   *Show notifications when mirroring or sharing the display* in the same settings pane.
+
+Two limits are worth knowing about the banners regardless. They come from the page rather than
+from a server pushing to your device, so the aivis tab has to stay open — a closed tab is a
+silent one, though the tab count is right there when you come back. And browsers withhold the
+API from pages that are neither `https` nor `localhost`, so if you reach aivis on a LAN address
+the switch is there but inert, and says why. `127.0.0.1` counts as localhost and is fine.
 
 ## The session page
 
