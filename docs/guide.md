@@ -63,7 +63,9 @@ this morning, which is the wrong way round for the only item that is truly block
 the composer uses. **Dismiss** hides that particular wait rather than the session: the id it is keyed to
 carries the state, so a session that moves on and stops again comes back on its own. A
 question's id is the tool call that asked it, so dismissing one question does not hide the
-next.
+next. **notify me** in the band's header hands the same two urgent kinds to your operating
+system, so you hear about them from another window — see
+[Get told when a session needs you](#get-told-when-a-session-needs-you).
 
 aivis cannot answer a permission prompt for a session running in a terminal — that terminal
 owns the dialogue — so a stalled session is reported as stalled rather than dressed up as a
@@ -113,6 +115,53 @@ Everything the page shows comes from the same sources:
 | Prompts, tools, context | Accumulated from the transcript's assistant records |
 | Sparkline | Tool calls counted into the minute they were made in |
 | Model, age | The most recent assistant turn |
+
+## Get told when a session needs you
+
+The queue only works while you are reading it, and most of the time you are not — you are in
+an editor, or a terminal, or another tab. **notify me**, in the header of the **Needs you**
+band, hands that queue to your operating system: a session that asks you something or
+finishes its turn raises a system notification, which lands in Notification Center on macOS
+and in whatever your desktop uses on Linux. aivis does not draw those banners and cannot
+style them or decide how long they stay — that belongs to your browser and your desktop, and
+both offer settings for it.
+
+Clicking it the first time asks the browser for permission, which is a prompt only a click
+can open, and sends one notification straight back so you can see that the path works end to
+end. The choice is remembered. Turning it off stops the banners without touching the
+permission, so turning it on again is one click; if you deny permission outright the browser
+will not ask a second time, and you have to allow it in that page's site settings.
+
+Two of the queue's three kinds are announced:
+
+| Kind | What the banner says |
+| --- | --- |
+| asking you | **project is asking you**, with the question itself underneath — or **project needs a decision** for a permission prompt, since allow-or-deny is not the same errand as writing an answer |
+| waiting on you | **project finished its turn**, with the prompt the session opened with underneath, which is what tells two sessions in the same project apart |
+
+**stalled** is deliberately not announced. It means only that a live session has gone quiet
+without saying why, which is as often a long command as a problem, and a notification that
+cries wolf is worse than none.
+
+Each session gets one banner at a time: a newer one replaces whatever aivis last said about
+that session, so a session that asks, is answered, and then finishes its turn does not leave
+three banners describing states it is no longer in. Clicking a banner brings the window
+forward with that session already open.
+
+Nothing is announced for a session whose own page you are looking at. If session A's page is
+open and the window has focus when A finishes its turn, you have just watched it happen and
+a banner would only repeat it. The fleet page is deliberately not treated that way, even
+though the whole queue is on it: a row arriving in a list is not the same as having read the
+list, and the index is exactly where aivis gets left open while the work happens somewhere
+else. Nothing is announced for the queue as it stood when you switched notifications on
+either — that is the state of the world rather than news, and announcing it would mean a
+burst of banners for waits you already knew about every time the page reloads.
+
+Two limits are worth knowing. The banners come from the page rather than from a server
+pushing to your device, so the aivis tab has to stay open — a closed tab is a silent one.
+And browsers only offer the API to pages on `https` or `localhost`, so if you reach aivis on
+a LAN address over plain http the switch is there but inert, and says why on hover or on a
+click.
 
 ## The session page
 

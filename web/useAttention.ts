@@ -9,9 +9,19 @@ import type { AttentionItem } from '../shared/types.ts'
  * to notice, so it is fetched on a timer. `reload` exists because acting on an item —
  * nudging a session, say — changes the answer immediately and waiting out the interval
  * would look broken.
+ *
+ * `loaded` is false until a fetch has actually come back. An empty queue and a queue not
+ * yet read are the same value here, and notifications have to tell them apart: taking the
+ * second for the first would make the first real answer look like a fleet that just now
+ * started needing you, and announce all of it.
  */
-export function useAttention(intervalMs = 5000): { items: AttentionItem[]; reload: () => void } {
+export function useAttention(intervalMs = 5000): {
+  items: AttentionItem[]
+  loaded: boolean
+  reload: () => void
+} {
   const [items, setItems] = useState<AttentionItem[]>([])
+  const [loaded, setLoaded] = useState(false)
   const stopped = useRef(false)
 
   const load = useCallback(async (): Promise<void> => {
@@ -19,7 +29,11 @@ export function useAttention(intervalMs = 5000): { items: AttentionItem[]; reloa
       const response = await fetch('/api/attention')
       if (!response.ok) return
       const body = (await response.json()) as { items: AttentionItem[] }
-      if (!stopped.current) setItems(body.items)
+      if (stopped.current) return
+      setItems(body.items)
+      // Only ever set from a reply that arrived. A failed fetch leaves the queue as it was,
+      // and calling that loaded would put a baseline under a queue nobody has read.
+      setLoaded(true)
     } catch {
       // A queue that cannot load stays as it was rather than emptying itself.
     }
@@ -35,7 +49,7 @@ export function useAttention(intervalMs = 5000): { items: AttentionItem[]; reloa
     }
   }, [load, intervalMs])
 
-  return { items, reload: () => void load() }
+  return { items, loaded, reload: () => void load() }
 }
 
 const DISMISSED_KEY = 'aivis.dismissed'

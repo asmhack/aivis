@@ -9,7 +9,8 @@ import {
   tokens as fmtTokens,
 } from '../format.ts'
 import { RunningTasks } from './RunningTasks.tsx'
-import { useAttention, useDismissed } from '../useAttention.ts'
+import { useDismissed } from '../useAttention.ts'
+import type { Notifier } from '../useNotify.ts'
 import { useBlockUsage } from '../useBlockUsage.ts'
 import { useDefaults } from '../useDefaults.ts'
 import type { Defaults } from '../../shared/types.ts'
@@ -152,15 +153,22 @@ interface Project {
 export function MissionControl({
   sessions,
   connection,
+  attention: items,
+  reloadAttention: reload,
+  notifier,
   onOpen,
   onNew,
 }: {
   sessions: Session[]
   connection: ConnectionState
+  /** The whole attention queue, fetched by the app so notifications outlive this page. */
+  attention: AttentionItem[]
+  /** Re-read it, for when acting on a row has just changed the answer. */
+  reloadAttention: () => void
+  notifier: Notifier
   onOpen: (id: string) => void
   onNew: (cwd: string | null) => void
 }): React.JSX.Element {
-  const { items, reload } = useAttention()
   const { dismissed, dismiss, restore } = useDismissed()
   const usage = useBlockUsage()
   const defaults = useDefaults()
@@ -410,6 +418,7 @@ export function MissionControl({
                 {hiddenCount} dismissed — bring back
               </button>
             ) : null}
+            <NotifyToggle notifier={notifier} onSay={say} />
             <span className="sect__rule" />
           </h2>
           {queue.length === 0 ? (
@@ -647,6 +656,48 @@ function copyFor(item: AttentionItem): {
     dot: 'idle',
     title: item.title,
   }
+}
+
+/**
+ * The switch for system notifications, kept beside the queue it speaks for.
+ *
+ * It sits here rather than in the header because this is the section it is about: the rows
+ * below are exactly what it will tell you about, and putting the switch anywhere else
+ * would leave you guessing which of the page's several kinds of news it covers. The label
+ * says what state it is in rather than what clicking does, on the grounds that whether
+ * banners are coming is the thing you want to know at a glance.
+ *
+ * Where the browser offers no notifications at all it is marked unavailable rather than
+ * `disabled`: a disabled button stops firing hover events in most browsers, and the tooltip
+ * saying why it cannot be used is the only thing it has left to offer. It stays clickable
+ * for the same reason — the click puts that sentence in the toast, for anyone who does not
+ * think to hover.
+ */
+function NotifyToggle({
+  notifier,
+  onSay,
+}: {
+  notifier: Notifier
+  onSay: (message: string) => void
+}): React.JSX.Element {
+  const hint = !notifier.supported
+    ? 'Your browser only offers notifications to pages on https or localhost, and this is neither — reach aivis on localhost to use them.'
+    : notifier.permission === 'denied'
+      ? 'Your browser is blocking notifications for this page. Allow them in its site settings, then click here again.'
+      : notifier.enabled
+        ? 'On: a system notification when a session asks you something or finishes its turn, and nothing while you are already looking at the session it would be about. This tab has to stay open for them to arrive. Click to turn off.'
+        : 'Get a system notification when a session asks you something or finishes its turn, so you hear about it from another window. This tab has to stay open for them to arrive.'
+  return (
+    <button
+      className={`linkish notify ${notifier.enabled ? 'notify--on' : ''}`}
+      onClick={() => void notifier.toggle().then(onSay)}
+      title={hint}
+      aria-pressed={notifier.enabled}
+      aria-disabled={!notifier.supported}
+    >
+      {notifier.enabled ? 'notifications on' : 'notify me'}
+    </button>
+  )
 }
 
 function QueueRow({

@@ -8,6 +8,14 @@
   --text-dim: #8b949e;
   --text-faint: #5f6b7a;
   --accent: #58a6ff;
+  /*
+   * The one control on the page that offers to reach past the browser, so it is warm where
+   * everything else in a section header is grey. Softer than --asking, which it sits a few
+   * rows above: that colour marks a session that is blocked right now, and this one only
+   * marks a switch. Light mode gives up the pastel because a pastel on white is a colour
+   * nobody can read.
+   */
+  --notify: #f0b27a;
   --working: #3fb950;
   --stalled: #d29922;
   --idle: #6e94c4;
@@ -36,6 +44,7 @@
     --text-dim: #59636e;
     --text-faint: #818b98;
     --accent: #0969da;
+    --notify: #b45309;
     --working: #1a7f37;
     --stalled: #9a6700;
     --idle: #4a72a8;
@@ -2213,6 +2222,45 @@ body {
   cursor: pointer;
 }
 .linkish:hover { color: var(--accent); }
+
+/*
+ * The notification switch, drawn as a pill rather than as a link.
+ *
+ * The dismissed-count link beside it is a footnote and this is a switch, so sharing the
+ * link's quiet grey left it invisible — nobody looks for a control they have never seen,
+ * and this is the one that has to be found before it can do anything. Hence the warm
+ * outline, which is the only colour in a section header.
+ *
+ * The on position fills the pill instead of changing its colour, so "will this interrupt
+ * me" is answerable from the shape without reading the label.
+ *
+ * Marked unavailable, the browser has no notifications to offer at all — on a page served
+ * over plain http to a LAN address it will not — so it drops back to grey rather than
+ * going on advertising something it cannot do.
+ */
+.notify {
+  padding: 1px 9px 2px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--notify) 40%, transparent);
+  color: var(--notify);
+}
+.notify:hover {
+  color: var(--notify);
+  border-color: var(--notify);
+  background: color-mix(in srgb, var(--notify) 10%, transparent);
+}
+.notify--on {
+  background: color-mix(in srgb, var(--notify) 16%, transparent);
+  border-color: color-mix(in srgb, var(--notify) 55%, transparent);
+}
+.notify[aria-disabled='true'] {
+  color: var(--text-faint);
+  border-color: var(--border);
+  background: none;
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+.notify[aria-disabled='true']:hover { color: var(--text-faint); border-color: var(--border); background: none; }
 
 /* Attention queue */
 

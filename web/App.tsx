@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { SessionPage } from './components/SessionPage.tsx'
 import { MissionControl } from './components/MissionControl.tsx'
 import { useFleet } from './useFleet.ts'
+import { useAttention } from './useAttention.ts'
+import { useNotify } from './useNotify.ts'
 import { NewSessionSheet } from './components/NewSessionSheet.tsx'
 
 /** Read the session id out of the current path, or null on the fleet page. */
@@ -17,6 +19,10 @@ function routeSessionId(pathname: string): string | null {
 export function App(): React.JSX.Element {
   const { sessions, connection, drivers } = useFleet()
   const [openId, setOpenId] = useState<string | null>(() => routeSessionId(location.pathname))
+  // The attention queue is fetched up here rather than inside the index, because the
+  // notifications it feeds have to keep working while you are reading a session — the one
+  // place you cannot see the queue and most want to be told that something else needs you.
+  const { items: attention, loaded: attentionLoaded, reload: reloadAttention } = useAttention()
   // null means closed; a string preselects that project, '' opens with none chosen.
   const [newFor, setNewFor] = useState<string | null>(null)
 
@@ -40,6 +46,8 @@ export function App(): React.JSX.Element {
       setOpenId(null)
     }
   }, [])
+
+  const notifier = useNotify(attention, attentionLoaded, openId, open)
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
@@ -106,6 +114,9 @@ export function App(): React.JSX.Element {
       <MissionControl
         sessions={sessions}
         connection={connection}
+        attention={attention}
+        reloadAttention={reloadAttention}
+        notifier={notifier}
         onOpen={open}
         onNew={(cwd) => setNewFor(cwd ?? '')}
       />
