@@ -425,6 +425,15 @@ watches it rather than making you refresh. What is recorded is the same
 `<bash-input>`/`<bash-stdout>`/`<bash-stderr>` shape the CLI writes, so a session handed back
 to a terminal reads its history exactly as if the terminal had run the line itself.
 
+A run that is not going to end on its own has a **stop it** under it, next to whatever it has
+printed so far. A session runs one `!` command at a time, so the `gcloud auth login` whose
+browser tab you closed holds that session's only slot until the timeout comes round; stopping
+kills the command's whole process group and gives the slot back at once. If you discover that
+by typing the next line and being told one is already running, the refusal offers to do both
+at once: **stop it and run this**. Either way the stopped run is kept rather than discarded —
+it travels with your next message like any other, carrying an `[aivis]` line that says it was
+cut short, because a `!npm test` you stopped halfway is not a `!npm test` that passed.
+
 A few things are worth knowing:
 
 - **stdin is closed.** A command that stops to ask something reads EOF and fails in a second
@@ -437,7 +446,7 @@ A few things are worth knowing:
   shell in front of it.
 - **The exit status is recorded.** The CLI's format has nowhere to put one — the terminal
   showed it to you — so aivis adds a line marked `[aivis]` to the stderr block when a command
-  failed, timed out, or was truncated. Nothing else is added.
+  failed, timed out, was stopped, or was truncated. Nothing else is added.
 - **It runs as you, with your environment**, minus the same variables a driven session has
   stripped: `ANTHROPIC_API_KEY` and the `CLAUDE_*` session variables, so a `!claude ...` does
   not inherit this session's identity or get flipped onto API billing.

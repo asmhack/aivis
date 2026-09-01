@@ -38,6 +38,7 @@ import { RunningTasks } from './RunningTasks.tsx'
 import { DiffView } from './DiffView.tsx'
 import { ChangesCrumbs, ChangesRail, type ChangesView } from './ChangesRail.tsx'
 import { sessionChanges, type TouchedFile } from '../changes.ts'
+import { pendingRunId } from '../../shared/bash.ts'
 import { toolDiffs } from '../diff.ts'
 
 /**
@@ -1608,6 +1609,21 @@ function Composer({
   const bashRefusal = useDefaults()?.bashRefusal ?? null
   const bashLine = text.trimStart().startsWith('!')
 
+  /** The `!` run the daemon is holding open for this session, when there is one. */
+  const runningBash = entries.find((entry) => entry.kind === 'bash' && entry.running) ?? null
+
+  /**
+   * The `!` line that was refused because one was already running, kept so the refusal can
+   * offer to deal with it.
+   *
+   * A session runs one `!` command at a time, so the `gcloud auth login` you walked away from
+   * holds the only slot until it times out — minutes later — and every line typed meanwhile is
+   * turned away. Saying so and leaving it there makes the reader go and find the run to stop
+   * it, then type this again; the answer is nearly always "stop that and run this", so that is
+   * the button.
+   */
+  const [stopOffer, setStopOffer] = useState<string | null>(null)
+
   /**
    * Run a `!` line here rather than sending it.
    *
@@ -1616,7 +1632,7 @@ function Composer({
    * empties and the conversation is re-read, and the session itself is not touched — which is
    * also why this works while it is mid-turn.
    */
-  const runBash = async (command: string): Promise<void> => {
+  const runBash = async (command: string, stopFirst = false): Promise<void> => {
     if (!command || busy) return
     if (images.length > 0) {
       setFailure('A ! line runs a command on this machine; it cannot carry images.')
@@ -1625,6 +1641,15 @@ function Composer({
     setBusy(true)
     setFailure(null)
     try {
+      if (stopFirst) {
+        // The daemon holds this until the command is actually over, so the run below is not
+        // racing the one it just killed for the session's slot.
+        const refused = await stopBashRun(session.id, runningBash?.uuid ?? null)
+        if (refused) {
+          setFailure(refused)
+          return
+        }
+      }
       const response = await fetch(`/api/sessions/${encodeURIComponent(session.id)}/bash`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1633,9 +1658,14 @@ function Composer({
       if (!response.ok) {
         const detail = (await response.json()) as { error?: string }
         setFailure(detail.error ?? `server returned ${response.status}`)
+        // A 409 from this route means one thing: the session already has a `!` command in
+        // flight. That is the refusal there is something to be done about, so the command is
+        // kept to run once the other one is out of the way.
+        setStopOffer(response.status === 409 ? command : null)
         return
       }
       setText('')
+      setStopOffer(null)
       onRan()
     } catch (err) {
       setFailure(String(err))
@@ -1673,6 +1703,7 @@ function Composer({
     }
     setBusy(true)
     setFailure(null)
+    setStopOffer(null)
     if (takeover) {
       setConflict(null)
       setConflictReason(null)
@@ -1872,7 +1903,17 @@ function Composer({
             </button>
           </p>
         ) : failure ? (
-          <p className="composer__warn">{failure}</p>
+          <p className="composer__warn">
+            {failure}
+            {stopOffer ? (
+              <>
+                {' '}
+                <button className="composer__takeover" onClick={() => void runBash(stopOffer, true)}>
+                  stop it and run this
+                </button>
+              </>
+            ) : null}
+          </p>
         ) : null}
 
         {images.length > 0 ? (
@@ -2134,6 +2175,55 @@ function markdownComponents(sessionId: string) {
   }
 }
 
+/**
+ * Ask the daemon to stop the `!` command a session is running.
+ *
+ * Answers with the reason it did not, or `null` when the run is over — the request is held
+ * until then, so whatever wants to run next can ask straight away.
+ */
+async function stopBashRun(sessionId: string, uuid: string | null): Promise<string | null> {
+  try {
+    const response = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/bash/stop`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      // The run is named rather than left to the daemon, because this page is up to a poll
+      // behind it: a stop clicked on a command that finished meanwhile must not land on the
+      // one started after it.
+      body: JSON.stringify({ run: uuid === null ? null : pendingRunId(uuid) }),
+    })
+    if (response.ok) return null
+    const detail = (await response.json()) as { error?: string }
+    return detail.error ?? `server returned ${response.status}`
+  } catch (err) {
+    return String(err)
+  }
+}
+
+/**
+ * Stop a `!` command that is still going, from the run's own place in the conversation.
+ *
+ * There is nothing to tell the page afterwards: while a run is going the conversation is
+ * re-read every second and a half, so the entry finishes itself. The button only has to say
+ * that it is working and report a stop that was refused.
+ */
+function StopRun({ sessionId, uuid }: { sessionId: string; uuid: string }): React.JSX.Element {
+  const [stopping, setStopping] = useState(false)
+  const [failure, setFailure] = useState<string | null>(null)
+  const stop = async (): Promise<void> => {
+    setStopping(true)
+    setFailure(await stopBashRun(sessionId, uuid))
+    setStopping(false)
+  }
+  return (
+    <p className="bashout__note">
+      <button className="bashout__stop" disabled={stopping} onClick={() => void stop()}>
+        {stopping ? 'stopping…' : 'stop it'}
+      </button>
+      {failure ? <span className="bashout__stopfail"> {failure}</span> : null}
+    </p>
+  )
+}
+
 function Entry({
   entry,
   cwd,
@@ -2161,6 +2251,7 @@ function Entry({
           <span className="cmdrun">! {entry.command}</span>
           {entry.stdout ? <pre className="bashout">{entry.stdout}</pre> : null}
           {entry.stderr ? <pre className="bashout bashout--err">{entry.stderr}</pre> : null}
+          {entry.running ? <StopRun sessionId={sessionId} uuid={entry.uuid} /> : null}
           {entry.pending && !entry.running ? (
             <p className="bashout__note">goes to the session with your next message</p>
           ) : null}

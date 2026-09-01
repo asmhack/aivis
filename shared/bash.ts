@@ -60,7 +60,10 @@ export function unescapeTags(text: string): string {
  */
 export function bashNote(run: BashRun): string {
   const parts: string[] = []
-  if (run.timedOut) parts.push(`killed after ${Math.round(run.timeoutMs / 1000)}s`)
+  // A stopped run says so ahead of everything else, because it is the fact that explains the
+  // output: what is above the note is a command cut off partway, not a command that failed.
+  if (run.stopped) parts.push('stopped from aivis before it finished')
+  else if (run.timedOut) parts.push(`killed after ${Math.round(run.timeoutMs / 1000)}s`)
   else if (run.exitCode !== 0 && run.exitCode !== null) parts.push(`exit status ${run.exitCode}`)
   if (run.failure) parts.push(run.failure)
   if (run.truncated) parts.push(`output truncated at ${Math.round(run.maxBytes / 1024)} KB`)
@@ -101,6 +104,23 @@ export function formatBashRun(run: BashRun): string {
 export function formatBashPrefix(runs: BashRun[]): string {
   if (runs.length === 0) return ''
   return runs.map(formatBashRun).join('\n') + '\n\n'
+}
+
+/**
+ * The id a run is shown under while the daemon is still holding it.
+ *
+ * A held run is in no transcript, so the entry drawn for it has no uuid to take and is given
+ * one made from the run's own id. The page needs to get that id back out — stopping a run is
+ * asking for one named run, not for whatever is going on now — so the making and the reading
+ * live together here, for the same reason the tags above do.
+ */
+export function pendingEntryUuid(runId: string): string {
+  return `pending:${runId}`
+}
+
+/** The run behind a held entry, or `null` for an entry that came out of a transcript. */
+export function pendingRunId(uuid: string): string | null {
+  return uuid.startsWith('pending:') ? uuid.slice('pending:'.length) : null
 }
 
 const INPUT = /^<bash-input>([\s\S]*?)<\/bash-input>/
