@@ -2,6 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { SessionPage } from './components/SessionPage.tsx'
 import { MissionControl } from './components/MissionControl.tsx'
 import { useFleet } from './useFleet.ts'
+import { preferredQueue, useAttention } from './useAttention.ts'
+import { useNotify } from './useNotify.ts'
+import { useBadge } from './useBadge.ts'
 import { NewSessionSheet } from './components/NewSessionSheet.tsx'
 
 /** Read the session id out of the current path, or null on the fleet page. */
@@ -15,8 +18,33 @@ function routeSessionId(pathname: string): string | null {
  * and the new-session sheet that either of them can raise.
  */
 export function App(): React.JSX.Element {
-  const { sessions, connection, drivers } = useFleet()
+  const { sessions, connection, drivers, attention: pushed } = useFleet()
   const [openId, setOpenId] = useState<string | null>(() => routeSessionId(location.pathname))
+
+  // The attention queue is held up here rather than inside the index, because what it feeds —
+  // notifications and the count on the tab — has to keep working while you are reading a
+  // session, which is the one place the queue itself is invisible.
+  //
+  // It arrives over the fleet socket, and is polled only while it is not. Push is what makes
+  // the feature work at all in the case it exists for: a browser throttles a hidden tab's
+  // timers to roughly once a minute and may stop running them entirely, so a queue that is
+  // polled is at its slowest exactly when the tab is in the background and being told is the
+  // whole point. The poll stays for a server too old to push and for a socket that has
+  // dropped, neither of which may be allowed to look like a fleet that needs nothing.
+  const socketOpen = connection === 'open'
+  const { items: polled, loaded: polledLoaded, reload: reloadAttention } = useAttention(
+    socketOpen && pushed !== null,
+  )
+  const { items: attention, loaded: attentionLoaded } = preferredQueue(
+    pushed,
+    socketOpen,
+    polled,
+    polledLoaded,
+  )
+
+  // The count on the tab and its icon, which need no permission and cannot be suppressed by
+  // anything outside this page. See web/badge.ts for why that matters more than it sounds.
+  useBadge(attention)
   // null means closed; a string preselects that project, '' opens with none chosen.
   const [newFor, setNewFor] = useState<string | null>(null)
 
@@ -40,6 +68,8 @@ export function App(): React.JSX.Element {
       setOpenId(null)
     }
   }, [])
+
+  const notifier = useNotify(attention, attentionLoaded, openId, open)
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
@@ -106,6 +136,9 @@ export function App(): React.JSX.Element {
       <MissionControl
         sessions={sessions}
         connection={connection}
+        attention={attention}
+        reloadAttention={reloadAttention}
+        notifier={notifier}
         onOpen={open}
         onNew={(cwd) => setNewFor(cwd ?? '')}
       />

@@ -166,6 +166,16 @@ export type ServerMessage =
   | { kind: 'update'; sessions: Session[] }
   | { kind: 'removed'; ids: string[] }
   | { kind: 'driver'; status: DriverStatus }
+  /**
+   * The attention queue, pushed whenever anything that could change it changes.
+   *
+   * The same value `GET /api/attention` returns, sent rather than waited for. The queue is
+   * what raises a browser notification, and a notification exists for the moment the tab is
+   * in the background — which is exactly when a browser throttles a page's timers to once a
+   * minute or stops running them at all. A polled trigger is therefore slowest precisely
+   * when it matters most, so the server says so instead of being asked.
+   */
+  | { kind: 'attention'; queue: AttentionQueue }
 
 /** A tool invocation together with whatever it returned. */
 export interface ToolCall {

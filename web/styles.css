@@ -8,6 +8,22 @@
   --text-dim: #8b949e;
   --text-faint: #5f6b7a;
   --accent: #58a6ff;
+  /*
+   * The one control on the page that offers to reach past the browser, so it is warm where
+   * everything else in a section header is grey. Softer than --asking, which it sits a few
+   * rows above: that colour marks a session that is blocked right now, and this one only
+   * marks a switch. Light mode gives up the pastel because a pastel on white is a colour
+   * nobody can read.
+   */
+  --notify: #f0b27a;
+  /*
+   * The same switch once it is on. A different colour rather than a filled version of the
+   * same one, because the two states are asking for opposite things: the off position is
+   * trying to be found, which is what the warmth is for, and the on position only has to
+   * report that it is handled. Pale blue reads as settled where more orange would go on
+   * pressing.
+   */
+  --notify-on: #a8c7e8;
   --working: #3fb950;
   --stalled: #d29922;
   --idle: #6e94c4;
@@ -36,6 +52,8 @@
     --text-dim: #59636e;
     --text-faint: #818b98;
     --accent: #0969da;
+    --notify: #b45309;
+    --notify-on: #356a9e;
     --working: #1a7f37;
     --stalled: #9a6700;
     --idle: #4a72a8;
@@ -2213,6 +2231,80 @@ body {
   cursor: pointer;
 }
 .linkish:hover { color: var(--accent); }
+
+/*
+ * The notification switch: a bell in a ring, not a line of text.
+ *
+ * The dismissed-count link beside it is a footnote and this is a switch, so sharing the
+ * link's quiet grey left it invisible — nobody looks for a control they have never seen,
+ * and this is the one that has to be found before it can do anything. Hence the warm
+ * outline, which is the only colour in a section header.
+ *
+ * The on position changes colour as well as filling the ring, so the two states are told
+ * apart at a glance and without reading anything. They are not the same kind of thing: off
+ * is asking to be found, which is what the warmth is for, while on is only reporting that it
+ * is handled, which is a quieter job and gets a quieter colour.
+ *
+ * Marked unavailable, the browser has no notifications to offer at all — on a page served
+ * over plain http to a LAN address it will not — so it drops back to grey rather than
+ * going on advertising something it cannot do.
+ */
+.notify {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--notify) 40%, transparent);
+  /* No longer a `.linkish`, so the two things that class was carrying are set here. */
+  background: none;
+  cursor: pointer;
+  color: var(--notify);
+  /* The row it sits in aligns on the baseline, which an icon does not have one of. */
+  align-self: center;
+}
+.notify:hover {
+  color: var(--notify);
+  border-color: var(--notify);
+  background: color-mix(in srgb, var(--notify) 10%, transparent);
+}
+
+/*
+ * The bell itself, stroked in `currentColor` so it takes whichever of the two colours the
+ * button is wearing. `.bell__cut` is the gap the slash is drawn through: the page's own
+ * background, thick enough to clear the outline behind it, painted before the slash on top.
+ */
+.bell {
+  width: 14px;
+  height: 14px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.bell__cut { stroke: var(--bg); stroke-width: 4.5; }
+.notify--on {
+  color: var(--notify-on);
+  background: color-mix(in srgb, var(--notify-on) 16%, transparent);
+  border-color: color-mix(in srgb, var(--notify-on) 55%, transparent);
+}
+.notify--on:hover {
+  color: var(--notify-on);
+  border-color: var(--notify-on);
+  background: color-mix(in srgb, var(--notify-on) 22%, transparent);
+}
+.notify[aria-disabled='true'] {
+  color: var(--text-faint);
+  border-color: var(--border);
+  background: none;
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+.notify[aria-disabled='true']:hover { color: var(--text-faint); border-color: var(--border); background: none; }
 
 /* Attention queue */
 

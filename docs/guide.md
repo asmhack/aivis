@@ -63,7 +63,9 @@ this morning, which is the wrong way round for the only item that is truly block
 the composer uses. **Dismiss** hides that particular wait rather than the session: the id it is keyed to
 carries the state, so a session that moves on and stops again comes back on its own. A
 question's id is the tool call that asked it, so dismissing one question does not hide the
-next.
+next. The bell in the band's header hands the same two urgent kinds to your operating
+system, so you hear about them from another window — see
+[Get told when a session needs you](#get-told-when-a-session-needs-you).
 
 aivis cannot answer a permission prompt for a session running in a terminal — that terminal
 owns the dialogue — so a stalled session is reported as stalled rather than dressed up as a
@@ -113,6 +115,88 @@ Everything the page shows comes from the same sources:
 | Prompts, tools, context | Accumulated from the transcript's assistant records |
 | Sparkline | Tool calls counted into the minute they were made in |
 | Model, age | The most recent assistant turn |
+
+## Get told when a session needs you
+
+The queue only works while you are reading it, and most of the time you are not — you are in
+an editor, or a terminal, or another tab. Two things carry it to you instead, and they are
+deliberately not the same kind of thing.
+
+**The count on the tab** needs no permission and cannot be switched off from outside the page.
+Whenever something is asking you or holding for your reply, the tab title reads `(2) aivis`
+and its icon carries the same number, so a glance at the tab strip answers "is anything
+waiting on me" from any other tab you have open. This is the floor the feature stands on. It
+is always on and there is nothing to configure.
+
+**A system notification** is the escalation: a banner from your operating system, which
+reaches you when the browser is not even on screen. Switch it on with the bell in the header
+of the **Needs you** band: struck through and warm while it is off, plain and blue once it is
+on. The first click asks the browser for permission — a prompt only a click can open — and
+raises one notification straight away so you can see what one looks like.
+
+Both are fed by the same queue, and the server pushes it over the socket the page already
+holds rather than the page asking for it on a timer. That matters for the case the feature
+exists for: a browser throttles a hidden tab's timers to roughly once a minute and may stop
+running them altogether, so anything polled is slowest exactly when the tab is in the
+background and being told is the whole point.
+
+### What raises a banner
+
+| Kind | What the banner says |
+| --- | --- |
+| asking you | **project is asking you**, with the question itself underneath — or **project needs a decision** for a permission prompt, since allow-or-deny is not the same errand as writing an answer |
+| waiting on you | **project finished its turn**, with the prompt the session opened with underneath, which is what tells two sessions in the same project apart |
+
+**stalled** is deliberately not announced, and is not counted on the tab either. It means only
+that a live session has gone quiet without saying why, which is as often a long command as a
+problem, and a notification that cries wolf is worse than none. The queue on the page still
+shows it, because being looked at is a lower bar than following you into another window.
+
+Every banner is its own banner. An earlier version grouped them by session so a newer one
+replaced the last, which is worth knowing about because of how it failed: replacing a
+notification is defined to happen *quietly*, so the second and every later banner for a
+session arrived with no alert at all, and nothing anywhere reported that it had been
+swallowed. Clicking a banner brings the window forward with that session already open.
+
+Nothing is announced for a session whose own page you are looking at. If session A's page is
+open and the window has focus when A finishes its turn, you have just watched it happen. The
+fleet page is deliberately not treated that way, even though the whole queue is on it: a row
+arriving in a list is not the same as having read the list, and the index is exactly where
+aivis gets left open while the work happens somewhere else.
+
+Nothing is announced for the queue as it stood when you switched notifications on, either —
+that is the state of the world rather than news. What has already been announced is remembered
+across page loads for an hour, so reloading the page does not announce the same waits twice,
+and, more to the point, does not quietly reset that memory and swallow the next one. The page
+going away is not the same as you going away, which matters more than it sounds: a browser
+will discard a background tab under memory pressure and reload it when you next click it.
+
+### When no banner appears
+
+aivis cannot tell whether your operating system drew a banner it raised. The browser reports
+that it showed one even where there is no screen to show it on, so there is no answer to be had
+by asking. Two things stand in for the answer instead: the tab count, which never depended on
+the operating system in the first place, and the banner raised the moment you switch the
+feature on — if that one does not appear, none of the later ones will either, and the switch's
+tooltip says how many have been raised since the page loaded, so a count that climbs against an
+empty screen says where the problem is not.
+
+When the browser accepted a banner and nothing appeared, the cause is downstream of both the
+page and the browser. On macOS, in the order worth checking:
+
+1. **System Settings › Notifications › your browser** — *Allow notifications* on, and the alert
+   style set to *Banners* or *Alerts* rather than *None*. A browser that is not allowed to
+   present notifications still accepts every one it is given, so this fails completely
+   silently, and it fails for every website at once rather than for aivis in particular.
+2. **A Focus mode**, which suppresses banners per application.
+3. **Screen sharing or mirroring**, which macOS treats as its own reason to go quiet — see
+   *Show notifications when mirroring or sharing the display* in the same settings pane.
+
+Two limits are worth knowing about the banners regardless. They come from the page rather than
+from a server pushing to your device, so the aivis tab has to stay open — a closed tab is a
+silent one, though the tab count is right there when you come back. And browsers withhold the
+API from pages that are neither `https` nor `localhost`, so if you reach aivis on a LAN address
+the switch is there but inert, and says why. `127.0.0.1` counts as localhost and is fine.
 
 ## The session page
 
