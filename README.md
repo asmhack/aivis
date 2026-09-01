@@ -220,8 +220,11 @@ npm stop           # free the port, whatever is holding it
 
 `npm start` builds the front end before it serves, so a server left running from an earlier
 build ends up serving a page newer than itself. The two have to agree on the shape of a
-session, and when they do not the page says so rather than rendering something wrong. That is
-what `restart` is for, and why `stop` frees the port rather than trusting a process name.
+session, and when they do not the page says so rather than rendering something wrong: it asks
+the server which build it booted with, and a server that has been overtaken draws a notice
+naming `npm restart` as the fix instead of leaving you with whatever the disagreement threw.
+That is what `restart` is for, and why `stop` frees the port rather than trusting a process
+name.
 
 Every setting is an environment variable, and [Configuration](docs/configuration.md) lists all
 of them.

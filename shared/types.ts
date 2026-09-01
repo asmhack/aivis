@@ -832,3 +832,19 @@ export interface Defaults {
    */
   bashRefusal: string | null
 }
+
+/**
+ * What `/api/build` returns: whether the front end this server hands out is still the one
+ * it started with.
+ *
+ * The client and the server are one program in two processes, and only one of them is
+ * replaced by `npm run build`. The page asks this so it can say which of the two is behind
+ * rather than leaving the reader with whatever TypeError the disagreement happened to
+ * throw first.
+ */
+export interface BuildStatus {
+  /** True when this server serves the built front end at all, rather than only the API. */
+  serving: boolean
+  /** True when `dist` has been rebuilt since this process read it. */
+  stale: boolean
+}
