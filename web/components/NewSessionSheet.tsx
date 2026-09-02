@@ -30,10 +30,14 @@ interface BranchState {
  *
  * Full ids are used rather than the `opus` / `sonnet` aliases, so a session keeps the
  * model it was started on when the aliases move to a newer release. The `[1m]` suffix
- * selects the 1M-context variant; Fable 5 is already 1M, so it has no suffixed form.
+ * selects the 1M-context variant; Fable ships at 1M, so it has no suffixed form.
  *
  * A model the CLI does not recognise fails quietly — the session starts and then reports
- * that the model may not exist — which is why nothing goes in this list unverified.
+ * that the model may not exist — which is why nothing goes in this list unverified. A
+ * release newer than the installed Claude Code is the same trap wearing a friendlier face:
+ * the id still reaches the API and answers, but the CLI assumes 200k for a name it has no
+ * entry for and auto-compacts there, so a model listed here is only as long-windowed as
+ * the build launching it. Updating Claude Code is the fix; `[1m]` is the workaround.
  */
 const MODEL_GROUPS: { label: string; options: { value: string; label: string }[] }[] = [
   {
@@ -48,7 +52,10 @@ const MODEL_GROUPS: { label: string; options: { value: string; label: string }[]
   },
   {
     label: 'Fable',
-    options: [{ value: 'claude-fable-5', label: 'Fable 5 · 1M' }],
+    options: [
+      { value: 'claude-fable-5-1', label: 'Fable 5.1 · 1M' },
+      { value: 'claude-fable-5', label: 'Fable 5 · 1M' },
+    ],
   },
   {
     label: 'Sonnet',
